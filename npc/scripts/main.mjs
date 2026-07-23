@@ -948,7 +948,7 @@ function openCardsApp() {
  * re-rendering, so the button never "drifts" when the user switches tools.
  */
 Hooks.on("getSceneControlButtons", (controls) => {
-  return; // кнопка убрана: у всех есть группа 🔥 Burn
+  if (game.modules.get("burnhub")?.active) return; // с BurnHub кнопка в папке 🔥 Burn; без него — своя (видна всем)
   // v13+: controls is an object keyed by control name. Add our tool to
   // the "tokens" layer because every user (GM and players) has it.
   const target = controls.tokens ?? controls.token ?? Object.values(controls)[0];

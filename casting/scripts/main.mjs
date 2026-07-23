@@ -968,7 +968,12 @@ Hooks.on("updateSetting", (setting) => {
 /* -------------------------------------------------------------------------- */
 
 Hooks.on("getSceneControlButtons", (controls) => {
-  return; // кнопка убрана: у всех есть группа 🔥 Burn
+  if (game.modules.get("burnhub")?.active) return; // с BurnHub кнопка в папке 🔥 Burn
+  // без BurnHub — своя кнопка (как раньше: ГМ всегда, игроки — если есть активная сцена)
+  if (!game.user.isGM) {
+    const hasActive = getScenes().some(s => s.isActive);
+    if (!hasActive) return;
+  }
 
   const tool = {
     name: `${MODULE_ID}-open`,

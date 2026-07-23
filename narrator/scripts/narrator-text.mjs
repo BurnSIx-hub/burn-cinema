@@ -691,7 +691,8 @@ function openApp() {
 // v13/v14: controls — plain object { tokens: { tools: {...} }, ... }
 // onChange — официальный callback для кнопок-действий (не onClick, не button:true)
 Hooks.on("getSceneControlButtons", controls => {
-  return; // кнопка переехала в группу 🔥 Burn (BurnHub)
+  if (game.modules.get("burnhub")?.active) return; // с BurnHub кнопка в папке 🔥 Burn
+  if (!game.user.isGM) return; // без BurnHub — своя кнопка (как раньше, только ГМ)
   try {
     const grp = controls.tokens ?? controls.token;
     if (!grp?.tools) {

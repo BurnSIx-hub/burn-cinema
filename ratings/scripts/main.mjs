@@ -43,7 +43,7 @@ Hooks.once("i18nInit", () => {
 });
 
 Hooks.on("getSceneControlButtons", (controls) => {
-  return; // кнопка убрана: у всех есть группа 🔥 Burn
+  if (game.modules.get("burnhub")?.active) return; // с BurnHub кнопка в папке 🔥 Burn; без него — своя (видна всем)
   // Visible to everyone: GM manages, players open results / vote.
   const tool = {
     name: MODULE_ID,

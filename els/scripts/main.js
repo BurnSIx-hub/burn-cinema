@@ -712,7 +712,8 @@ Hooks.once("ready", () => {
 // ── Кнопка на панели инструментов ────────────────────────────
 // v14 сохраняет ту же object-based структуру что и v13
 Hooks.on("getSceneControlButtons", (controls) => {
-  return; // кнопка переехала в группу 🔥 Burn (BurnHub)
+  if (game.modules.get("burnhub")?.active) return; // с BurnHub кнопка в папке 🔥 Burn
+  if (!game.user?.isGM) return; // без BurnHub — своя кнопка (как раньше, только ГМ)
   controls["epic-loading-screens"] = {
     name:    "epic-loading-screens",
     title:   "Epic Loading Screens",

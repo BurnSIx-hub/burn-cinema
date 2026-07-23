@@ -1,0 +1,71 @@
+{
+  "session-ratings.App.Title": "Оценки глав",
+  "session-ratings.App.NewChapter": "Новая глава",
+  "session-ratings.App.Empty": "Пока нет ни одной главы.",
+  "session-ratings.App.EmptyPlayer": "Мастер добавит главу и откроет голосование в конце сессии.",
+  "session-ratings.App.VotesCount": "Голосов",
+  "session-ratings.App.YouVoted": "Вы проголосовали",
+  "session-ratings.App.Vote": "Голосовать",
+  "session-ratings.App.OpenVote": "Открыть голосование",
+  "session-ratings.App.CloseVote": "Закрыть голосование",
+  "session-ratings.App.Voters": "Кто как проголосовал",
+  "session-ratings.App.Delete": "Удалить",
+
+  "session-ratings.Controls.Open": "Оценки глав (IMDB)",
+
+  "session-ratings.Settings.Criteria.Name": "Критерии оценки",
+  "session-ratings.Settings.Criteria.Hint": "Список критериев через запятую. Каждый оценивается по 10-балльной шкале. Применяется к новым главам.",
+
+  "session-ratings.Defaults.Criteria": "Сюжет,Бои,Отыгрыш,Атмосфера",
+  "session-ratings.Defaults.Overall": "Общая оценка",
+
+  "session-ratings.Chapter.Untitled": "Глава {n}",
+
+  "session-ratings.Status.Draft": "Черновик",
+  "session-ratings.Status.Open": "Идёт голосование",
+  "session-ratings.Status.Closed": "Голосование закрыто",
+
+  "session-ratings.Form.NewTitle": "Новая глава",
+  "session-ratings.Form.EditTitle": "Редактировать главу",
+  "session-ratings.Form.Title": "Название главы",
+  "session-ratings.Form.Poster": "Постер (картинка)",
+  "session-ratings.Form.PosterHint": "путь к изображению, необязательно",
+  "session-ratings.Form.Browse": "Выбрать файл",
+  "session-ratings.Form.Description": "Описание",
+  "session-ratings.Form.Save": "Сохранить",
+  "session-ratings.Form.Cancel": "Отмена",
+  "session-ratings.Form.Close": "Закрыть",
+
+  "session-ratings.Confirm.DeleteTitle": "Удалить главу",
+  "session-ratings.Confirm.DeleteBody": "Удалить главу «{title}» вместе со всеми оценками? Это необратимо.",
+
+  "session-ratings.Voters.Title": "Оценки: {title}",
+  "session-ratings.Voters.Player": "Игрок",
+  "session-ratings.Voters.Overall": "Итог",
+  "session-ratings.Voters.None": "Пока никто не проголосовал.",
+
+  "session-ratings.Vote.Title": "Оценить главу",
+  "session-ratings.Vote.Chapter": "Глава",
+  "session-ratings.Vote.Overall": "Ваша итоговая оценка:",
+  "session-ratings.Vote.Submit": "Отправить оценку",
+  "session-ratings.Vote.Editing": "Вы уже голосовали — можно изменить оценку.",
+  "session-ratings.Vote.Incomplete": "Поставьте оценку по каждому критерию.",
+  "session-ratings.Vote.Thanks": "Спасибо за оценку!",
+
+  "session-ratings.Notify.GotVote": "{user} оценил(а) главу на {score}",
+  "session-ratings.Notify.VotingOpen": "Голосование открыто — игроки получили окно оценки.",
+
+  "session-ratings.Card.Header": "Итоги главы #{n}",
+  "session-ratings.Card.Votes": "Проголосовало: {n}",
+
+  "session-ratings.Key.Title": "Ключ шифрования",
+  "session-ratings.Key.Note": "Оценки игроков хранятся в мире в зашифрованном виде. Расшифровать их может только этот ключ — он лежит только в вашем браузере и по сети не передаётся. Скопируйте и сохраните его в надёжном месте.",
+  "session-ratings.Key.Current": "Текущий ключ (скопируйте для бэкапа)",
+  "session-ratings.Key.NoneYet": "Ключ появится после создания первой главы или первого голоса.",
+  "session-ratings.Key.Import": "Импортировать ключ",
+  "session-ratings.Key.ImportHint": "вставьте сюда ключ с другой машины",
+  "session-ratings.Key.Warn": "Если потерять ключ — детальную раскладку по игрокам восстановить нельзя (средние баллы в мире сохранятся). Импорт заменит текущий ключ.",
+  "session-ratings.Key.DoImport": "Импортировать",
+  "session-ratings.Key.Imported": "Ключ импортирован.",
+  "session-ratings.Key.CannotDecrypt": "Не удалось расшифровать оценки: на этой машине нет нужного ключа. Импортируйте ключ через «Ключ шифрования»."
+}

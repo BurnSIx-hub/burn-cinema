@@ -1,0 +1,384 @@
+/* ============================================================
+   Epic Loading Screens v2.3.0 — Foundry VTT v13/v14
+   ============================================================ */
+
+/* ── Шрифт Alegreya ──────────────────────────────────────── */
+@font-face {
+  font-family: 'Alegreya';
+  src: url('../fonts/Alegreya-Regular.ttf') format('truetype');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Alegreya';
+  src: url('../fonts/Alegreya-Italic.ttf') format('truetype');
+  font-weight: 400; font-style: italic; font-display: swap;
+}
+@font-face {
+  font-family: 'Alegreya';
+  src: url('../fonts/Alegreya-Bold.ttf') format('truetype');
+  font-weight: 700; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Alegreya';
+  src: url('../fonts/Alegreya-BoldItalic.ttf') format('truetype');
+  font-weight: 700; font-style: italic; font-display: swap;
+}
+
+/* ── Оверлей ─────────────────────────────────────────────── */
+#els-loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+}
+#els-loading-overlay.els-visible {
+  opacity: 1;
+  pointer-events: all;
+}
+
+/* ── Фоновое изображение (основной слой) ─────────────────── */
+#els-bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0;
+  transition: opacity var(--els-fade, 800ms) ease;
+  image-rendering: high-quality;
+  will-change: opacity;
+}
+#els-bg.els-bg-visible { opacity: 1; }
+
+#els-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(0,0,0,0.10) 0%,
+    rgba(0,0,0,0.02) 35%,
+    rgba(0,0,0,0.50) 75%,
+    rgba(0,0,0,0.82) 100%
+  );
+}
+
+/* ── Второй слой (crossfade) — transition управляется JS ─── */
+#els-bg-next {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0;
+  image-rendering: high-quality;
+  will-change: opacity;
+  z-index: 1;
+}
+#els-bg-next::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(0,0,0,0.10) 0%,
+    rgba(0,0,0,0.02) 35%,
+    rgba(0,0,0,0.50) 75%,
+    rgba(0,0,0,0.82) 100%
+  );
+}
+
+/* ── UI поверх обоих слоёв ───────────────────────────────── */
+#els-spinner, #els-scene-name, #els-tips-bar, #els-progress-bar {
+  z-index: 4;
+}
+
+/* ── Спиннер ─────────────────────────────────────────────── */
+#els-spinner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+#els-spinner.els-spinner-visible { opacity: 1; }
+
+.els-spinner-ring {
+  width: 52px;
+  height: 52px;
+  border: 2px solid rgba(255,255,255,0.15);
+  border-top-color: rgba(255,255,255,0.80);
+  border-radius: 50%;
+  animation: els-spin 1.0s linear infinite;
+}
+@keyframes els-spin { to { transform: rotate(360deg); } }
+
+.els-spinner-label {
+  font-family: 'Alegreya', serif;
+  font-size: 12px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.45);
+}
+
+/* ── Название сцены ──────────────────────────────────────── */
+#els-scene-name {
+  position: absolute;
+  top: 36px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Alegreya', serif;
+  font-weight: 700;
+  font-size: 28px;
+  letter-spacing: 0.10em;
+  color: rgba(255,248,230,0.92);
+  text-shadow: 0 2px 18px rgba(0,0,0,0.95);
+  white-space: nowrap;
+  max-width: 80vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0;
+  transition: opacity 0.8s ease 0.35s;
+}
+#els-scene-name.els-name-visible { opacity: 1; }
+
+/* ── Блок подсказок — центр экрана ──────────────────────── */
+#els-tips-bar {
+  position: absolute;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%) translateY(8px);
+  width: min(760px, 80vw);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+  padding: 28px 36px 24px;
+  background: radial-gradient(ellipse at center, rgba(0,0,0,0.55) 0%, transparent 75%);
+  opacity: 0;
+  transition: opacity 0.65s ease 0.25s, transform 0.65s ease 0.25s;
+}
+#els-tips-bar.els-tips-visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.els-tip-prefix {
+  font-family: 'Alegreya', serif;
+  font-weight: 400;
+  font-size: 11px;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  color: #c9a84c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+}
+.els-tip-prefix::before,
+.els-tip-prefix::after {
+  content: '';
+  flex: 0 0 36px;
+  height: 1px;
+  background: #c9a84c;
+  opacity: 0.6;
+}
+
+.els-tip-text {
+  font-family: 'Alegreya', serif;
+  font-weight: 400;
+  font-size: 19px;
+  line-height: 1.65;
+  color: rgba(255, 248, 230, 0.95);
+  text-shadow: 0 1px 10px rgba(0,0,0,0.95), 0 0 30px rgba(0,0,0,0.6);
+  text-align: center;
+  opacity: 0;
+  transition: opacity 0.45s ease;
+}
+.els-tip-text em     { font-style: italic; color: rgba(255,240,200,1); }
+.els-tip-text strong { font-weight: 700; }
+.els-tip-text.els-tip-show { opacity: 1; }
+
+/* ── Прогресс-бар ────────────────────────────────────────── */
+#els-progress-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: rgba(255,255,255,0.08);
+}
+#els-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #8b6914 0%, #c9a84c 50%, #e8d5a3 100%);
+  box-shadow: 0 0 8px rgba(201,168,76,0.6);
+  border-radius: 0 2px 2px 0;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   UI НАСТРОЕК
+   ═══════════════════════════════════════════════════════════ */
+
+.els-config-wrap { display: flex; flex-direction: column; height: 100%; }
+
+/* Вкладки */
+.els-tabs-nav {
+  display: flex;
+  border-bottom: 2px solid rgba(0,0,0,0.12);
+  background: rgba(0,0,0,0.03);
+  padding: 0 12px;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.els-tab-btn {
+  padding: 10px 18px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  font-size: 13px;
+  color: #666;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: color 0.15s;
+  white-space: nowrap;
+}
+.els-tab-btn:hover { color: #333; }
+.els-tab-btn.active { color: #2874a6; border-bottom-color: #2874a6; font-weight: 600; }
+
+.els-tab-content { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+.els-tab-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid rgba(0,0,0,0.10);
+  background: rgba(0,0,0,0.02);
+  flex-shrink: 0;
+}
+.els-tab-hint { font-size: 12px; color: #777; display: flex; align-items: center; gap: 6px; }
+.els-tab-body { overflow-y: auto; flex: 1; padding: 10px 16px; }
+
+/* Список секций */
+.els-sec-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(0,0,0,0.10);
+  border-radius: 6px;
+  margin-bottom: 8px;
+  background: #fff;
+  transition: box-shadow 0.15s;
+}
+.els-sec-row:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.10); }
+
+.els-sec-preview {
+  width: 72px; height: 48px;
+  flex-shrink: 0;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #eee;
+}
+.els-sec-preview img { width: 100%; height: 100%; object-fit: cover; }
+.els-sec-no-img {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  color: #bbb; font-size: 18px;
+}
+
+.els-sec-info { flex: 1; min-width: 0; }
+.els-sec-name { font-weight: 600; font-size: 14px; color: #222; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.els-sec-meta { display: flex; gap: 14px; margin-top: 3px; font-size: 11px; color: #888; }
+.els-sec-meta span { display: flex; align-items: center; gap: 4px; }
+
+.els-sec-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+/* Привязки */
+.els-bind-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 10px;
+  border: 1px solid rgba(0,0,0,0.09);
+  border-radius: 5px; margin-bottom: 6px; background: #fff;
+}
+.els-bind-row:hover { background: #fafafa; }
+.els-scene-thumb {
+  width: 60px; height: 38px; object-fit: cover;
+  border-radius: 3px; flex-shrink: 0; background: #e8e8e8;
+}
+.els-bind-name { flex: 1; font-size: 13px; font-weight: 500; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.els-bind-select { width: 200px; flex-shrink: 0; padding: 4px 8px; border: 1px solid rgba(0,0,0,0.2); border-radius: 4px; font-size: 12px; background: #fff; }
+
+/* Секция редактора */
+.els-section { padding: 16px 20px; border-bottom: 1px solid rgba(0,0,0,0.10); }
+.els-section:last-of-type { border-bottom: none; }
+.els-section h3 { margin: 0 0 5px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.07em; color: #555; display: flex; align-items: center; gap: 7px; }
+
+.els-hint { margin: 0 0 10px; font-size: 12px; color: #777; line-height: 1.5; }
+
+/* Список изображений */
+#els-img-list { display: flex; flex-direction: column; gap: 5px; margin-bottom: 8px; max-height: 220px; overflow-y: auto; }
+.els-img-row { display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.09); border-radius: 4px; padding: 5px 8px; }
+.els-img-thumb { width: 54px; height: 36px; object-fit: cover; border-radius: 3px; flex-shrink: 0; background: #ccc; }
+.els-img-path { flex: 1; font-size: 11px; font-family: monospace; color: #555; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Кнопки */
+.els-img-row button, .els-sec-row button {
+  flex-shrink: 0; height: 28px; padding: 0 10px;
+  background: none; border: 1px solid rgba(0,0,0,0.2); border-radius: 3px;
+  font-size: 12px; color: #444; cursor: pointer;
+  display: flex; align-items: center; gap: 5px; transition: background 0.15s;
+}
+.els-img-row button:hover, .els-sec-row button:hover { background: rgba(0,0,0,0.07); }
+.els-btn-danger { color: #c0392b !important; border-color: rgba(180,40,40,0.3) !important; }
+.els-btn-danger:hover { background: rgba(180,40,40,0.10) !important; }
+
+.els-empty { text-align: center; color: #aaa; font-style: italic; padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.els-empty i { font-size: 28px; opacity: 0.4; }
+.els-empty p { margin: 0; font-size: 13px; }
+.els-empty-small { padding: 10px; font-size: 12px; text-align: center; color: #aaa; font-style: italic; }
+
+/* Поля ввода */
+.els-field-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.els-field-row label { width: 210px; flex-shrink: 0; font-size: 12px; color: #555; }
+.els-field-row input, .els-section > input[type="text"] {
+  flex: 1; width: 100%; padding: 5px 8px;
+  border: 1px solid rgba(0,0,0,0.2); border-radius: 4px; font-size: 13px; box-sizing: border-box;
+}
+
+#els-sec-tips {
+  width: 100%; box-sizing: border-box; padding: 7px 9px;
+  border: 1px solid rgba(0,0,0,0.2); border-radius: 4px;
+  font-family: monospace; font-size: 12px; resize: vertical;
+}
+
+.els-checkbox-row { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; user-select: none; margin-top: 6px; }
+
+.els-btn-add {
+  padding: 6px 14px; background: rgba(50,120,200,0.07); border: 1px solid rgba(50,120,200,0.28);
+  border-radius: 4px; color: #2874a6; font-size: 12px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px; transition: background 0.15s;
+}
+.els-btn-add:hover { background: rgba(50,120,200,0.15); }
+
+.els-footer { padding: 12px 20px; display: flex; justify-content: flex-end; background: rgba(0,0,0,0.03); border-top: 1px solid rgba(0,0,0,0.10); }
+
+.els-btn-save {
+  padding: 7px 22px; background: #27ae60; border: none; border-radius: 4px;
+  color: #fff; font-size: 13px; font-weight: 600; cursor: pointer;
+  display: flex; align-items: center; gap: 7px; transition: background 0.15s;
+}
+.els-btn-save:hover { background: #1e8449; }

@@ -1,0 +1,71 @@
+{
+  "session-ratings.App.Title": "Chapter Ratings",
+  "session-ratings.App.NewChapter": "New chapter",
+  "session-ratings.App.Empty": "No chapters yet.",
+  "session-ratings.App.EmptyPlayer": "The GM will add a chapter and open voting at the end of the session.",
+  "session-ratings.App.VotesCount": "Votes",
+  "session-ratings.App.YouVoted": "You voted",
+  "session-ratings.App.Vote": "Rate",
+  "session-ratings.App.OpenVote": "Open voting",
+  "session-ratings.App.CloseVote": "Close voting",
+  "session-ratings.App.Voters": "Who voted what",
+  "session-ratings.App.Delete": "Delete",
+
+  "session-ratings.Controls.Open": "Chapter Ratings (IMDB)",
+
+  "session-ratings.Settings.Criteria.Name": "Rating criteria",
+  "session-ratings.Settings.Criteria.Hint": "Comma-separated list of criteria. Each is rated 1–10. Applies to new chapters.",
+
+  "session-ratings.Defaults.Criteria": "Plot,Combat,Roleplay,Atmosphere",
+  "session-ratings.Defaults.Overall": "Overall",
+
+  "session-ratings.Chapter.Untitled": "Chapter {n}",
+
+  "session-ratings.Status.Draft": "Draft",
+  "session-ratings.Status.Open": "Voting open",
+  "session-ratings.Status.Closed": "Voting closed",
+
+  "session-ratings.Form.NewTitle": "New chapter",
+  "session-ratings.Form.EditTitle": "Edit chapter",
+  "session-ratings.Form.Title": "Chapter title",
+  "session-ratings.Form.Poster": "Poster (image)",
+  "session-ratings.Form.PosterHint": "path to an image, optional",
+  "session-ratings.Form.Browse": "Browse",
+  "session-ratings.Form.Description": "Description",
+  "session-ratings.Form.Save": "Save",
+  "session-ratings.Form.Cancel": "Cancel",
+  "session-ratings.Form.Close": "Close",
+
+  "session-ratings.Confirm.DeleteTitle": "Delete chapter",
+  "session-ratings.Confirm.DeleteBody": "Delete chapter \"{title}\" and all its ratings? This cannot be undone.",
+
+  "session-ratings.Voters.Title": "Ratings: {title}",
+  "session-ratings.Voters.Player": "Player",
+  "session-ratings.Voters.Overall": "Overall",
+  "session-ratings.Voters.None": "Nobody has voted yet.",
+
+  "session-ratings.Vote.Title": "Rate the chapter",
+  "session-ratings.Vote.Chapter": "Chapter",
+  "session-ratings.Vote.Overall": "Your overall score:",
+  "session-ratings.Vote.Submit": "Submit rating",
+  "session-ratings.Vote.Editing": "You already voted — you can change your rating.",
+  "session-ratings.Vote.Incomplete": "Please rate every criterion.",
+  "session-ratings.Vote.Thanks": "Thanks for your rating!",
+
+  "session-ratings.Notify.GotVote": "{user} rated the chapter {score}",
+  "session-ratings.Notify.VotingOpen": "Voting is open — players received the rating window.",
+
+  "session-ratings.Card.Header": "Chapter #{n} results",
+  "session-ratings.Card.Votes": "Voters: {n}",
+
+  "session-ratings.Key.Title": "Encryption key",
+  "session-ratings.Key.Note": "Player ratings are stored in the world encrypted. Only this key can decrypt them — it lives in your browser only and is never sent over the network. Copy it and keep it somewhere safe.",
+  "session-ratings.Key.Current": "Current key (copy it for backup)",
+  "session-ratings.Key.NoneYet": "The key is created with your first chapter or first vote.",
+  "session-ratings.Key.Import": "Import a key",
+  "session-ratings.Key.ImportHint": "paste a key from another machine",
+  "session-ratings.Key.Warn": "If you lose the key, the per-player breakdown cannot be recovered (world averages survive). Importing replaces the current key.",
+  "session-ratings.Key.DoImport": "Import",
+  "session-ratings.Key.Imported": "Key imported.",
+  "session-ratings.Key.CannotDecrypt": "Could not decrypt the ratings: this machine has no matching key. Import it via \"Encryption key\"."
+}

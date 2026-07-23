@@ -1,0 +1,7 @@
+Put your loading screen images here (JPG/PNG/WebP, 1920x1080+ recommended).
+Then add them to a section: scene toolbar -> Epic Loading Screens -> Manage sections.
+You can also pick images from anywhere in Data or use direct URLs.
+
+Положите сюда изображения для экранов загрузки (JPG/PNG/WebP, лучше 1920x1080+).
+Затем добавьте их в секцию: панель сцены -> Epic Loading Screens -> Управление секциями.
+Можно выбирать файлы из любого места Data или указывать прямые URL.

@@ -1,0 +1,35 @@
+<div class="sr-vote">
+  <div class="sr-vote-head">
+    {{#if poster}}<img class="sr-vote-poster" src="{{poster}}" alt="" />{{/if}}
+    <div class="sr-vote-headtext">
+      <div class="sr-vote-num">{{localize "session-ratings.Vote.Chapter"}} #{{number}}</div>
+      <h2 class="sr-vote-title">{{title}}</h2>
+      {{#if description}}<p class="sr-vote-desc">{{description}}</p>{{/if}}
+    </div>
+  </div>
+
+  {{#if hasVoted}}
+  <p class="sr-vote-note"><i class="fa-solid fa-circle-info"></i> {{localize "session-ratings.Vote.Editing"}}</p>
+  {{/if}}
+
+  <div class="sr-vote-crits">
+    {{#each criteria}}
+    <div class="sr-crit" data-crit="{{this.label}}">
+      <span class="sr-crit-label">{{this.label}}</span>
+      <div class="sr-stars"></div>
+      <span class="sr-crit-val">—</span>
+    </div>
+    {{/each}}
+  </div>
+
+  <div class="sr-vote-overall">
+    <span>{{localize "session-ratings.Vote.Overall"}}</span>
+    <strong class="sr-overall-val">—</strong>
+    <span class="sr-overall-max">/ {{max}}</span>
+  </div>
+
+  <footer class="sr-vote-actions">
+    <button type="submit" class="sr-btn primary"><i class="fa-solid fa-paper-plane"></i> {{localize "session-ratings.Vote.Submit"}}</button>
+    <button type="button" class="sr-btn" data-action="cancel"><i class="fa-solid fa-xmark"></i> {{localize "session-ratings.Form.Cancel"}}</button>
+  </footer>
+</div>

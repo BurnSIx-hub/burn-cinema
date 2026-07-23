@@ -1,0 +1,78 @@
+{{!-- Player Scene Picker --}}
+<div class="cc-layout">
+
+  {{#if hasScenes}}
+    {{#if hasMultipleScenes}}
+      <div class="cc-scenes-bar">
+        <div class="cc-scenes-tabs">
+          {{#each scenes}}
+            <div class="cc-scene-tab {{#if isSelected}}selected{{/if}}"
+                 data-action="openScene" data-scene-id="{{id}}" title="{{name}}">
+              <span class="cc-scene-name">{{name}}</span>
+            </div>
+          {{/each}}
+        </div>
+      </div>
+    {{/if}}
+
+    <div class="cc-main">
+      <div class="cc-left">
+        <div class="roles-list">
+          {{#each roles}}
+            <div class="cc-role-card {{#if isSelected}}selected{{/if}} {{#if isTakenByOther}}cc-taken-other{{/if}} {{#if isMine}}is-mine{{/if}}"
+                 data-role-id="{{id}}">
+              <img class="cc-role-portrait" src="{{actorImg}}" alt="" data-img-name="{{actorName}}" />
+              <div class="cc-role-info">
+                <div class="cc-role-name">{{actorName}}</div>
+                <div class="cc-actor-name">{{roleName}}</div>
+                {{#if takenByName}}
+                  <div class="cc-taken">
+                    <span class="cc-player-dot" style="background:{{takenByColor}}"></span>{{localize 'CASTING.TakenBy' name=takenByName}}
+                  </div>
+                {{/if}}
+              </div>
+            </div>
+          {{/each}}
+        </div>
+      </div>
+
+      <div class="cc-right">
+        {{#if rightPane.isEmpty}}
+          <div class="cc-empty">{{localize 'CASTING.SelectRolePrompt'}}</div>
+        {{else if rightPane.isMissing}}
+          <div class="cc-empty">{{localize 'CASTING.ActorNotFound'}}</div>
+        {{else}}
+          <div class="cc-right-scroll">
+            <div class="cc-actor-header">
+              <img class="cc-actor-portrait-big" src="{{rightPane.actorImg}}" alt="" data-img-name="{{rightPane.actorName}}" />
+              <div class="cc-actor-titles">
+                <h2 class="cc-role-title">{{rightPane.actorName}}</h2>
+                <div class="cc-actor-subtitle">{{rightPane.roleName}}</div>
+                {{#if rightPane.takenByName}}
+                  <div class="cc-taken-big">
+                    <span class="cc-player-dot cc-player-dot--big" style="background:{{rightPane.takenByColor}}"></span>{{localize 'CASTING.TakenBy' name=rightPane.takenByName}}
+                  </div>
+                {{/if}}
+              </div>
+            </div>
+            <div class="cc-bio">{{{rightPane.biography}}}</div>
+          </div>
+          <div class="cc-cta">
+            {{#if rightPane.canTake}}
+              <button type="button" class="cc-btn-take" data-action="takeRole" data-role-id="{{rightPane.roleId}}">
+                <i class="fas fa-masks-theater"></i> {{localize 'CASTING.TakeRole'}}
+              </button>
+            {{/if}}
+            {{#if rightPane.canLeave}}
+              <button type="button" class="cc-btn-leave" data-action="leaveRole" data-role-id="{{rightPane.roleId}}">
+                <i class="fas fa-door-open"></i> {{localize 'CASTING.LeaveRole'}}
+              </button>
+            {{/if}}
+          </div>
+        {{/if}}
+      </div>
+    </div>
+  {{else}}
+    <div class="cc-empty cc-empty-big">{{localize 'CASTING.NoActiveScenes'}}</div>
+  {{/if}}
+</div>

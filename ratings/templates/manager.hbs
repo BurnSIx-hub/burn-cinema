@@ -1,0 +1,91 @@
+<section class="sr-manager">
+  <header class="sr-head">
+    <div class="sr-head-title">
+      <i class="fa-solid fa-clapperboard"></i>
+      <span>{{localize "session-ratings.App.Title"}}</span>
+    </div>
+    {{#if isGM}}
+    <div class="sr-head-actions">
+      <button type="button" class="sr-key-btn" data-action="manageKey" title="{{localize "session-ratings.Key.Title"}}">
+        <i class="fa-solid fa-key"></i>
+      </button>
+      <button type="button" class="sr-new" data-action="newChapter">
+        <i class="fa-solid fa-plus"></i> {{localize "session-ratings.App.NewChapter"}}
+      </button>
+    </div>
+    {{/if}}
+  </header>
+
+  {{#if empty}}
+    <div class="sr-empty-state">
+      <i class="fa-solid fa-film"></i>
+      <p>{{localize "session-ratings.App.Empty"}}</p>
+      {{#unless isGM}}<p class="sr-empty-sub">{{localize "session-ratings.App.EmptyPlayer"}}</p>{{/unless}}
+    </div>
+  {{/if}}
+
+  <div class="sr-list">
+    {{#each chapters}}
+    <article class="sr-card status-{{this.status}}" data-chapter-id="{{this.id}}">
+      <div class="sr-poster">
+        {{#if this.poster}}
+          <img src="{{this.poster}}" alt="" />
+        {{else}}
+          <div class="sr-poster-ph"><i class="fa-solid fa-image"></i></div>
+        {{/if}}
+        {{#if this.isOpen}}<span class="sr-badge open"><i class="fa-solid fa-circle-dot"></i> {{this.statusLabel}}</span>{{/if}}
+      </div>
+
+      <div class="sr-body">
+        <div class="sr-card-head">
+          <div class="sr-titleline">
+            <span class="sr-num">#{{this.number}}</span>
+            <span class="sr-title">{{this.title}}</span>
+          </div>
+          <div class="sr-score {{#unless this.hasScore}}muted{{/unless}}">
+            <i class="fa-solid fa-star"></i>
+            <span class="sr-score-val">{{this.overall}}</span>
+            <span class="sr-score-max">/ {{../max}}</span>
+          </div>
+        </div>
+
+        <div class="sr-meta">
+          <span><i class="fa-regular fa-calendar"></i> {{this.date}}</span>
+          <span><i class="fa-solid fa-user-check"></i> {{localize "session-ratings.App.VotesCount"}}: {{this.count}}</span>
+          {{#if this.youVoted}}<span class="sr-you"><i class="fa-solid fa-check"></i> {{localize "session-ratings.App.YouVoted"}}</span>{{/if}}
+        </div>
+
+        {{#if this.description}}<p class="sr-desc">{{this.description}}</p>{{/if}}
+
+        {{#if this.criteria.length}}
+        <div class="sr-criteria">
+          {{#each this.criteria}}
+          <div class="sr-crit-row">
+            <span class="sr-crit-name">{{this.label}}</span>
+            <span class="sr-crit-bar"><span class="sr-crit-fill" style="width:{{this.pct}}%"></span></span>
+            <span class="sr-crit-num">{{this.value}}</span>
+          </div>
+          {{/each}}
+        </div>
+        {{/if}}
+
+        <div class="sr-actions">
+          {{#if this.isOpen}}
+            <button type="button" class="sr-btn primary" data-action="vote"><i class="fa-solid fa-star"></i> {{localize "session-ratings.App.Vote"}}</button>
+          {{/if}}
+          {{#if ../isGM}}
+            {{#if this.isOpen}}
+              <button type="button" class="sr-btn" data-action="closeVote"><i class="fa-solid fa-lock"></i> {{localize "session-ratings.App.CloseVote"}}</button>
+            {{else}}
+              <button type="button" class="sr-btn" data-action="openVote"><i class="fa-solid fa-bullhorn"></i> {{localize "session-ratings.App.OpenVote"}}</button>
+            {{/if}}
+            <button type="button" class="sr-btn" data-action="voters" title="{{localize "session-ratings.App.Voters"}}"><i class="fa-solid fa-users"></i></button>
+            <button type="button" class="sr-btn" data-action="editChapter" title="{{localize "session-ratings.Form.EditTitle"}}"><i class="fa-solid fa-pen"></i></button>
+            <button type="button" class="sr-btn danger" data-action="deleteChapter" title="{{localize "session-ratings.App.Delete"}}"><i class="fa-solid fa-trash"></i></button>
+          {{/if}}
+        </div>
+      </div>
+    </article>
+    {{/each}}
+  </div>
+</section>

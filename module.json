@@ -1,0 +1,84 @@
+{
+  "id": "burn-cinema",
+  "title": "🔥 Cinema",
+  "version": "1.0.0",
+  "compatibility": {
+    "minimum": "13",
+    "verified": "14"
+  },
+  "description": "Киностудия ГМа в одном модуле-картотеке: кастинг сцен (casting-call), нарратор (narrator-text), загрузочные экраны (epic-loading-screens), оценки глав (session-ratings) и карточки NPC (npc-cards). Настройки прежних модулей подхватываются автоматически.",
+  "authors": [
+    {
+      "name": "Vyazn & Claude"
+    }
+  ],
+  "esmodules": [
+    "casting/scripts/main.mjs",
+    "narrator/scripts/narrator-text.mjs",
+    "els/scripts/main.js",
+    "ratings/scripts/main.mjs",
+    "npc/scripts/main.mjs",
+    "scripts/catalog.js"
+  ],
+  "styles": [
+    "casting/styles/casting-call.css",
+    "narrator/styles/narrator-text.css",
+    "els/styles/loading.css",
+    "ratings/styles/session-ratings.css",
+    "npc/styles/npc-cards.css",
+    "styles/catalog.css"
+  ],
+  "languages": [
+    {
+      "lang": "ru",
+      "name": "Русский",
+      "path": "casting/lang/ru.json"
+    },
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "casting/lang/en.json"
+    },
+    {
+      "lang": "ru",
+      "name": "Русский",
+      "path": "narrator/lang/ru.json"
+    },
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "narrator/lang/en.json"
+    },
+    {
+      "lang": "ru",
+      "name": "Русский",
+      "path": "els/lang/ru.json"
+    },
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "els/lang/en.json"
+    },
+    {
+      "lang": "ru",
+      "name": "Русский",
+      "path": "ratings/lang/ru.json"
+    },
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "ratings/lang/en.json"
+    },
+    {
+      "lang": "ru",
+      "name": "Русский",
+      "path": "npc/lang/ru.json"
+    },
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "npc/lang/en.json"
+    }
+  ],
+  "socket": true
+}

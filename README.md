@@ -28,7 +28,32 @@
 
 ## Установка
 
-Модуль рассчитан на локальную установку в `Data/modules/burn-cinema`.
+Сначала поставьте [BurnHub](https://github.com/BurnSIx-hub/burnhub) — без него
+модуль не запустится (он объявлен как обязательная зависимость, а в официальном
+каталоге пакетов Foundry его нет, поэтому автоматически он не подтянется):
+
+```
+https://github.com/BurnSIx-hub/burnhub/releases/latest/download/module.json
+```
+
+Затем сам модуль. В Foundry: *Add-on Modules → Install Module →* поле
+**Manifest URL**:
+
+```
+https://github.com/BurnSIx-hub/burn-cinema/releases/latest/download/module.json
+```
+
+Такая установка даёт автообновление при следующих релизах.
+
+Вручную: скачать `module.zip` из
+[последнего релиза](https://github.com/BurnSIx-hub/burn-cinema/releases/latest)
+и распаковать в `Data/modules/burn-cinema`.
+
+## Лицензия
+
+Код — MIT, см. [LICENSE](LICENSE). Встроенные шрифты (Alegreya, Caveat,
+Pacifico) распространяются по SIL Open Font License 1.1 — см.
+[NOTICE.md](NOTICE.md).
 
 ---
 Автор: Vyazn & Claude

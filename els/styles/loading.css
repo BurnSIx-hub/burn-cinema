@@ -129,6 +129,20 @@
   color: rgba(255,255,255,0.45);
 }
 
+/* ── Долгая загрузка: подпись и щелчок, скрывающий экран ── */
+.els-stall-label {
+  font-family: 'Alegreya', serif;
+  font-size: 15px;
+  color: rgba(255,248,230,0.80);
+  text-shadow: 0 1px 10px rgba(0,0,0,0.95);
+  text-align: center;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+#els-loading-overlay.els-stalled { cursor: pointer; }
+#els-loading-overlay.els-stalled .els-stall-label { opacity: 1; }
+
 /* ── Название сцены ──────────────────────────────────────── */
 #els-scene-name {
   position: absolute;

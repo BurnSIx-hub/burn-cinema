@@ -1,6 +1,7 @@
 {
   "ELS.ModuleName": "Epic Loading Screens",
   "ELS.Loading": "Loading...",
+  "ELS.StillLoading": "The map is still loading. Click to hide this screen",
   "ELS.DefaultTipPrefix": "Lore entry",
   "ELS.Untitled": "Untitled",
   "ELS.ImagesCount": "{n} images",

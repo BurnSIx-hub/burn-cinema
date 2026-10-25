@@ -1,6 +1,6 @@
 /**
  * Epic Loading Screens — Foundry VTT v13/v14
- * v2.4.0
+ * v2.5.0
  */
 
 // ═══════════════════════════════════════════════════════════════
@@ -12,6 +12,8 @@ const DEFAULT_SHOW_TIPS  = true;
 // Локализованный заголовок по умолчанию; вычисляется на момент показа (см. lang/*.json)
 const defaultTipPrefix = () => game.i18n.localize("ELS.DefaultTipPrefix");
 const SLIDE_MS           = 7000;
+const STALL_MS           = 15000; // столько ждём canvasReady, потом смотрим, грузится ли ещё холст
+const WATCH_MS           = 2000;  // шаг повторной проверки, пока холст грузится
 
 const MODULE_ID = "epic-loading-screens";
 
@@ -49,7 +51,6 @@ function getBindings() { return _cache.getBindings(); }
 async function saveSections(sections) {
   _cache.sections = sections;
   await game.settings.set(MODULE_ID, "sections", JSON.stringify(sections));
-  ELSCache.preloadAll();
 }
 
 async function saveBindings(b) {
@@ -73,12 +74,19 @@ function getSectionForScene(scene) {
 // ═══════════════════════════════════════════════════════════════
 //  КЭШ ИЗОБРАЖЕНИЙ
 // ═══════════════════════════════════════════════════════════════
+// Картинки качаются по одной и только пока холст не грузит сцену: у игроков
+// они идут по тому же каналу до сервера ГМа, что и карта, и десятки мегабайт
+// заставок, пущенные разом, отнимали у карты полосу.
 const ELSCache = {
   _ready: new Set(),
+  _queue: [],
+  _busy:  false,
+  _wait:  null,
 
   preloadAll() {
     const run = () => {
-      for (const url of getSections().flatMap(s => s.images ?? [])) this._one(url);
+      this._queue = [...new Set(getSections().flatMap(s => s.images ?? []))];
+      this._pump();
     };
     if (typeof requestIdleCallback !== "undefined") {
       requestIdleCallback(run, { timeout: 5000 });
@@ -87,16 +95,26 @@ const ELSCache = {
     }
   },
 
-  preloadSection(section) {
-    for (const url of section?.images ?? []) this._one(url);
+  _pump() {
+    if (this._busy || this._wait) return;
+    while (this._queue.length && this._ready.has(this._queue[0])) this._queue.shift();
+    if (!this._queue.length) return;
+    if (canvas?.loading) {
+      this._wait = setTimeout(() => { this._wait = null; this._pump(); }, WATCH_MS);
+      return;
+    }
+    this._busy = true;
+    this._one(this._queue.shift()).then(() => { this._busy = false; this._pump(); });
   },
 
   _one(url) {
-    if (!url || this._ready.has(url)) return;
-    const img = new Image();
-    img.onload  = () => this._ready.add(url);
-    img.onerror = () => {};
-    img.src = url;
+    return new Promise(resolve => {
+      if (!url || this._ready.has(url)) return resolve();
+      const img = new Image();
+      img.onload  = () => { this._ready.add(url); resolve(); };
+      img.onerror = () => resolve();
+      img.src = url;
+    });
   },
 
   has(url) { return this._ready.has(url); },
@@ -109,12 +127,15 @@ const ELS = {
   overlay: null, bg: null, bgNext: null,
   spinner: null, sceneName: null,
   tipsBar: null, tipPrefix: null, tipText: null,
-  progressBar: null,
+  progressBar: null, stallLabel: null,
 
   _ready:        false,
   _minDone:      false,
+  _stalled:      false,
   _stopCycleFn:  null,
   _cycleTimer:   null,
+  _minTimer:     null,
+  _cleanupTimer: null,
   _fallbackTimer: null,
 
   _build() {
@@ -128,6 +149,7 @@ const ELS = {
       this.tipPrefix  = document.querySelector(".els-tip-prefix");
       this.tipText    = document.querySelector(".els-tip-text");
       this.progressBar = document.getElementById("els-progress-fill");
+      this.stallLabel = document.querySelector(".els-stall-label");
       return;
     }
     const el = document.createElement("div");
@@ -138,6 +160,7 @@ const ELS = {
       <div id="els-spinner">
         <div class="els-spinner-ring"></div>
         <div class="els-spinner-label">${L("Loading")}</div>
+        <div class="els-stall-label"></div>
       </div>
       <div id="els-scene-name"></div>
       <div id="els-tips-bar">
@@ -157,6 +180,9 @@ const ELS = {
     this.tipPrefix   = el.querySelector(".els-tip-prefix");
     this.tipText     = el.querySelector(".els-tip-text");
     this.progressBar = el.querySelector("#els-progress-fill");
+    this.stallLabel  = el.querySelector(".els-stall-label");
+    // Долгая загрузка: щелчок убирает экран, чтобы игрок добрался до чата
+    el.addEventListener("click", () => { if (this._stalled) this._hide(); });
   },
 
   show(scene) {
@@ -165,8 +191,13 @@ const ELS = {
     this._minDone = false;
     this._stopCycle();
 
-    // Сбросить предыдущий таймаут-фолбэк
-    if (this._fallbackTimer) { clearTimeout(this._fallbackTimer); this._fallbackTimer = null; }
+    // Таймеры прошлого показа: его минимальный таймер скрывал новый оверлей
+    // раньше времени, а отложенная очистка после скрытия стирала новый фон
+    clearTimeout(this._minTimer);
+    clearTimeout(this._cleanupTimer);
+    clearTimeout(this._fallbackTimer);
+    this._fallbackTimer = null;
+    this._setStalled(false);
 
     const section  = getSectionForScene(scene);
     const fadeMs   = game.settings.get(MODULE_ID, "fadeMs")   ?? DEFAULT_FADE_MS;
@@ -200,18 +231,33 @@ const ELS = {
     this._startCycle(images, tips, fadeMs);
 
     // Минимальный таймер
-    setTimeout(() => { this._minDone = true; this._tryHide(); }, minSecs * 1000);
+    this._minTimer = setTimeout(() => { this._minDone = true; this._tryHide(); }, minSecs * 1000);
 
-    // Абсолютный фолбэк: если через 15 сек оверлей не скрылся — скрыть принудительно.
-    // Защита от случаев когда canvasReady не приходит (активация текущей сцены, удаление сцены и т.д.)
-    this._fallbackTimer = setTimeout(() => {
-      if (this.overlay?.classList.contains("els-visible")) {
-        console.warn("[ELS] Fallback: принудительное скрытие оверлея (canvasReady не пришёл)");
-        this._ready   = true;
-        this._minDone = true;
-        this._hide();
-      }
-    }, 15000);
+    this._fallbackTimer = setTimeout(() => this._watch(), STALL_MS);
+  },
+
+  // Сторож на случай, когда canvasReady не приходит. Раньше через 15 сек оверлей
+  // скрывался безусловно, а большая карта у игрока на медленной связи грузится
+  // дольше: под оверлеем оказывался снимок прошлой сцены, который Foundry v14
+  // держит до конца загрузки, — выглядело как зависание до F5. Теперь, пока
+  // холст грузится, оверлей стоит; скрываем, только если загрузки нет вовсе
+  // (активировали уже открытую сцену, сцену удалили, отрисовка упала).
+  _watch() {
+    this._fallbackTimer = null;
+    if (!this.overlay?.classList.contains("els-visible")) return;
+    if (canvas?.loading || _catchUpTimer || _catchUp()) {
+      this._setStalled(true);
+      this._fallbackTimer = setTimeout(() => this._watch(), WATCH_MS);
+      return;
+    }
+    console.warn("[ELS] Fallback: принудительное скрытие оверлея (canvasReady не пришёл)");
+    this._hide();
+  },
+
+  _setStalled(on) {
+    this._stalled = on;
+    this.overlay?.classList.toggle("els-stalled", on);
+    if (on && this.stallLabel) this.stallLabel.textContent = L("StillLoading");
   },
 
   // ── Цикл слайдов (случайный порядок) ─────────────────────
@@ -225,7 +271,8 @@ const ELS = {
       return a;
     };
 
-    const imgs = shuffle(images);
+    // Скачанные — вперёд: первая картинка покажется сразу и не будет делить канал с картой
+    const imgs = shuffle(images).sort((a, b) => ELSCache.has(b) - ELSCache.has(a));
     const tps  = shuffle(tips);
     let idx    = 0;
     let active = true;
@@ -293,6 +340,8 @@ const ELS = {
     const curr = this.bg;
     const next = this.bgNext;
     if (!curr || !next) return;
+    // Посреди загрузки сцены не докачиваем: листаем только то, что уже есть
+    if (!ELSCache.has(src)) return;
 
     const swap = () => {
       // Ставим картинку пока next скрыт (opacity:0)
@@ -311,12 +360,7 @@ const ELS = {
       }));
     };
 
-    ELSCache.has(src) ? swap() : (() => {
-      const img = new Image();
-      img.onload  = () => { ELSCache._ready.add(src); swap(); };
-      img.onerror = () => {};
-      img.src = src;
-    })();
+    swap();
   },
 
   // ── Прогресс-бар ──────────────────────────────────────────
@@ -354,11 +398,12 @@ const ELS = {
     this._stopCycle();
     if (this._fallbackTimer) { clearTimeout(this._fallbackTimer); this._fallbackTimer = null; }
     if (!this.overlay) return;
+    this._setStalled(false);
     this.spinner?.classList.remove("els-spinner-visible");
     this.tipsBar?.classList.remove("els-tips-visible");
     this.sceneName?.classList.remove("els-name-visible");
     this.overlay.classList.remove("els-visible");
-    setTimeout(() => {
+    this._cleanupTimer = setTimeout(() => {
       if (this.bg)     { this.bg.classList.remove("els-bg-visible"); this.bg.style.backgroundImage = ""; }
       if (this.bgNext) { this.bgNext.style.transition = "none"; this.bgNext.style.opacity = "0"; this.bgNext.style.backgroundImage = ""; }
       if (this.tipText)  this.tipText.classList.remove("els-tip-show");
@@ -682,11 +727,12 @@ class ELSSectionEditApp extends foundry.applications.api.ApplicationV2 {
 //  РЕГИСТРАЦИЯ + ХУКИ
 // ═══════════════════════════════════════════════════════════════
 Hooks.once("init", () => {
-  const reg = (key, type, def) => game.settings.register(MODULE_ID, key,
-    { scope: "world", config: false, type, default: def });
+  const reg = (key, type, def, onChange) => game.settings.register(MODULE_ID, key,
+    { scope: "world", config: false, type, default: def, onChange });
 
-  reg("sections",  String,  "[]");
-  reg("bindings",  String,  "{}");
+  // ГМ правит секции посреди игры — у игроков кэш сбрасывается, иначе старые до F5
+  reg("sections",  String,  "[]", () => { _cache.sections = null; ELSCache.preloadAll(); });
+  reg("bindings",  String,  "{}", () => { _cache.bindings = null; });
   reg("tipPrefix", String,  ""); // пусто = локализованный заголовок по умолчанию
   reg("fadeMs",    Number,  DEFAULT_FADE_MS);
   reg("minSecs",   Number,  DEFAULT_MIN_SECS);
@@ -698,7 +744,7 @@ Hooks.once("init", () => {
     icon: "fas fa-layer-group", type: ELSSectionsApp, restricted: true,
   });
 
-  console.log("%c[ELS]%c v2.4.0 init (v13/v14)", "color:#c9a84c;font-weight:bold", "color:#888");
+  console.log("%c[ELS]%c v2.5.0 init (v13/v14)", "color:#c9a84c;font-weight:bold", "color:#888");
 });
 
 Hooks.once("ready", () => {
@@ -739,6 +785,34 @@ Hooks.on("getSceneControlButtons", (controls) => {
 // Инициализируется в Hooks.once("ready") выше.
 let _activeSceneId = null;
 
+// Scene#view не переключает сцену, пока холст грузит прошлую (canvas.loading), —
+// только предупреждает. ГМ сменил карту, пока игрок ещё грузил предыдущую, —
+// игрок оставался на старой до F5. Запоминаем отказ и догоняем активную сцену,
+// когда холст освободится.
+let _catchUpPending = false;
+let _catchUpTimer   = null;
+
+// true — догон начат, оверлей должен остаться
+function _catchUp() {
+  if (!_catchUpPending) return false;
+  _catchUpPending = false;
+  const target = game.scenes?.active;
+  if (!target || canvas?.scene?.id === target.id) return false;
+  console.warn(`[ELS] Foundry отклонил переход на «${target.name}», пока грузилась прошлая сцена — догоняем`);
+  const attempt = () => {
+    _catchUpTimer = null;
+    const scene = game.scenes?.active;
+    if (!scene || canvas?.scene?.id === scene.id) return ELS.onSceneReady();
+    if (canvas?.loading) { _catchUpTimer = setTimeout(attempt, 100); return; }
+    if (!ELS.overlay?.classList.contains("els-visible")) ELS.show(scene);
+    scene.view();
+  };
+  // canvasReady приходит раньше, чем Foundry снимает canvas.loading, —
+  // попытка уйдёт на следующий шаг таймера
+  attempt();
+  return true;
+}
+
 // updateScene active:true — единственный надёжный сигнал смены сцены.
 // Здесь сразу обновляем _activeSceneId и показываем оверлей.
 Hooks.on("updateScene", (scene, changes) => {
@@ -752,7 +826,8 @@ Hooks.on("updateScene", (scene, changes) => {
   }
 
   _activeSceneId = scene.id;
-  ELSCache.preloadSection(getSectionForScene(scene));
+  // Хуки update* идут раньше, чем Foundry вызывает Scene#view, — отказ виден здесь
+  if (canvas?.loading) _catchUpPending = true;
   ELS.show(scene);
 });
 
@@ -769,15 +844,15 @@ Hooks.on("canvasTearDown", () => {
   if (nextId === _activeSceneId) return;
 
   _activeSceneId = nextId;
-  const scene = game.scenes?.active ?? null;
-  ELSCache.preloadSection(getSectionForScene(scene));
-  ELS.show(scene);
+  ELS.show(game.scenes?.active ?? null);
 });
 
 // canvasReady — скрываем оверлей.
 // Срабатывает и после смены сцены, и после смены уровня —
 // но если оверлей не показан (смена уровня), _hide() не вызовется.
+// Если догрузилась не та сцена (переход был отклонён) — оверлей остаётся до нужной.
 Hooks.on("canvasReady", () => {
+  if (_catchUp()) return;
   ELS.onSceneReady();
 });
 

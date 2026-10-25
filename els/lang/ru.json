@@ -1,6 +1,7 @@
 {
   "ELS.ModuleName": "Epic Loading Screens",
   "ELS.Loading": "Загрузка...",
+  "ELS.StillLoading": "Карта ещё грузится. Щелчок — скрыть экран",
   "ELS.DefaultTipPrefix": "Лорная запись",
   "ELS.Untitled": "Без названия",
   "ELS.ImagesCount": "{n} изображений",

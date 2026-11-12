@@ -6,7 +6,7 @@
     "minimum": "13",
     "verified": "14"
   },
-  "description": "Киностудия ГМа в одном модуле-картотеке: кастинг сцен (casting-call), нарратор (narrator-text), загрузочные экраны (epic-loading-screens), оценки глав (session-ratings) и карточки NPC (npc-cards). Настройки прежних модулей подхватываются автоматически.",
+  "description": "Киностудия ГМа в одном модуле-картотеке: кастинг сцен (casting-call), нарратор (narrator-text), загрузочные экраны (epic-loading-screens), оценки глав (session-ratings), карточки NPC (npc-cards) и «Восприятие безумия» — колода видений для одного игрока. Настройки прежних модулей подхватываются автоматически.",
   "authors": [
     {
       "name": "Vyazn & Claude"

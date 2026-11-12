@@ -12,6 +12,9 @@
 - **Loading Screens** (`els/`) — эпичные загрузочные экраны (бывший `epic-loading-screens`).
 - **Session Ratings** (`ratings/`) — «IMDB кампании»: оценки глав игроками (бывший `session-ratings`).
 - **NPC Cards** (`npc/`) — карточки NPC с показом и раздачей игрокам (бывший `npc-cards`).
+- **Восприятие безумия** (`madness/`) — колода видений для одного игрока:
+  чужой облик токена, призраки, пропажи, цвет, звук. Подробно — в
+  [madness/README.md](madness/README.md).
 
 ## Особенности слияния
 
@@ -22,7 +25,8 @@
 
 ## Роли
 
-Часть инструментов доступна только ГМ (Narrator, Loading Screens), остальные
+Часть инструментов доступна только ГМ (Narrator, Loading Screens,
+Восприятие безумия), остальные
 видят и игроки (Casting Call, Session Ratings, NPC Cards) — фильтрация по флагу
 `gmOnly` в регистрации плиток.
 

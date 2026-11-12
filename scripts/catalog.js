@@ -47,6 +47,14 @@ const CARDS = [
     sub: "Карточки NPC: показ и раздача игрокам",
     icon: "fa-solid fa-id-card",
     run: () => game.burnCinema?.openNpc?.()
+  },
+  {
+    id: "madness",
+    title: "Восприятие безумия",
+    sub: "Колода видений для игрока: облик, призраки, пропажи",
+    icon: "fa-solid fa-brain",
+    gmOnly: true,
+    run: () => game.burnCinema?.openMadness?.()
   }
 ];
 

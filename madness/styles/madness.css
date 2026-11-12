@@ -1,0 +1,109 @@
+/* 🔥 Cinema · «Восприятие безумия» — GM-панель */
+
+.burn-madness .window-content { padding: 0; }
+.bm-panel {
+  display: flex; flex-direction: column; gap: 8px; padding: 8px;
+  max-height: 80vh; overflow-y: auto;
+}
+.bm-panel .bm-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.bm-panel .bm-row > input[type="text"] { flex: 1 1 auto; }
+.bm-panel .bm-empty { opacity: 0.7; text-align: center; padding: 10px; margin: 0; }
+.bm-panel .bm-hint { font-size: 11px; opacity: 0.7; margin: 2px 0; }
+.bm-panel select,
+.bm-panel input[type="text"],
+.bm-panel input[type="number"] { background: rgba(0,0,0,0.25); }
+
+.bm-panel .bm-target select { flex: 1 1 auto; }
+.bm-panel .bm-switches { justify-content: space-between; }
+
+/* Статус цели */
+.bm-panel .bm-status {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; opacity: 0.9;
+  padding: 4px 6px; border-radius: 4px; background: rgba(0,0,0,0.2);
+}
+.bm-panel .bm-dot { width: 9px; height: 9px; border-radius: 50%; background: #555; flex: 0 0 auto; }
+.bm-panel .bm-dot.live { background: #e0483a; box-shadow: 0 0 6px #e0483a; }
+.bm-panel .bm-dot.stop { background: #e0b43a; }
+.bm-panel .bm-warn { color: #e0483a; }
+
+.bm-panel .bm-stopbanner {
+  display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 4px;
+  background: rgba(224,180,58,0.15); border: 1px solid rgba(224,180,58,0.6);
+}
+.bm-panel .bm-stopbanner span { flex: 1 1 auto; }
+.bm-panel .bm-stopbanner button { flex: 0 0 auto; width: auto; }
+
+.bm-panel fieldset.bm-fieldset {
+  border: 1px solid var(--color-border-light-tertiary, rgba(255,255,255,0.1));
+  border-radius: 4px; padding: 6px 8px; margin: 0;
+}
+.bm-panel legend { font-weight: bold; padding: 0 4px; opacity: 0.85; }
+.bm-panel .bm-check { display: flex; align-items: center; gap: 4px; margin: 2px 0; }
+.bm-panel .bm-inline { display: inline-flex; align-items: center; gap: 4px; }
+.bm-panel .bm-inline input[type="number"] { width: 4.5em; }
+.bm-panel .bm-pick { flex-wrap: nowrap; }
+.bm-panel .bm-pick input[type="text"] { flex: 1 1 auto; width: auto; min-width: 0; }
+.bm-panel .bm-pick button { flex: 0 0 30px; width: 30px; }
+.bm-panel .bm-slider { display: flex; align-items: center; gap: 8px; width: 100%; }
+.bm-panel .bm-slider input { flex: 1 1 auto; }
+
+/* Сила фона */
+.bm-panel .bm-intensity { flex-wrap: nowrap; }
+.bm-panel .bm-intensity input { flex: 1 1 auto; width: auto; min-width: 0; }
+.bm-panel .bm-intensity b { flex: 0 0 8em; text-align: right; }
+
+/* Колода */
+.bm-panel ul.bm-deck { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.bm-panel .bm-card {
+  display: flex; align-items: center; gap: 8px; padding: 4px 6px;
+  border-radius: 4px; background: rgba(0,0,0,0.2); border: 1px solid transparent;
+}
+.bm-panel .bm-card.held { border-color: #e0483a; background: rgba(224,72,58,0.12); }
+.bm-panel .bm-card.editing { border-color: var(--color-warm-1, #ee9b3a); }
+.bm-panel .bm-card.elsewhere { opacity: 0.6; }
+.bm-panel .bm-card-img { width: 32px; height: 32px; border: none; border-radius: 4px; object-fit: cover; flex: 0 0 auto; }
+.bm-panel .bm-card-icon { width: 32px; text-align: center; font-size: 18px; opacity: 0.8; flex: 0 0 auto; }
+.bm-panel .bm-card-text { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; }
+.bm-panel .bm-card-name { font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bm-panel .bm-card-desc { font-size: 11px; opacity: 0.75; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bm-panel .bm-card-tools { display: flex; gap: 2px; flex: 0 0 auto; }
+.bm-panel .bm-card-tools button { width: 26px; height: 26px; padding: 0; line-height: 1; }
+.bm-panel .bm-tog.on { color: #fff; background: rgba(224,72,58,0.55); border-color: #e0483a; }
+
+/* Форма */
+.bm-panel .bm-kinds { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+.bm-panel .bm-kind { font-size: 11px; padding: 4px 2px; white-space: nowrap; }
+.bm-panel .bm-kind.on { color: var(--color-warm-1, #ee9b3a); border-color: var(--color-warm-1, #ee9b3a); }
+.bm-panel .bm-selection { font-size: 12px; margin: 2px 0; }
+.bm-panel .bm-primary { font-weight: bold; flex: 1 1 auto; }
+
+.bm-panel ul.bm-list { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.bm-panel ul.bm-list li { display: flex; align-items: center; gap: 6px; padding: 2px 4px; background: rgba(0,0,0,0.2); border-radius: 3px; }
+.bm-panel ul.bm-list li span { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bm-panel ul.bm-list li button { width: 22px; height: 22px; padding: 0; border: none; background: transparent; }
+
+.bm-panel .bm-danger { border-color: #e0483a; color: #ff8a7a; flex: 0 0 auto; width: auto; }
+.bm-panel .bm-danger:hover { background: rgba(224,72,58,0.15); }
+
+.bm-panel .bm-clickable { cursor: pointer; }
+.bm-panel .bm-clickable:hover { color: var(--color-warm-1, #ee9b3a); text-decoration: underline; }
+
+/* Библиотека картинок облика */
+.bm-panel .bm-preset-lib {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  gap: 6px; margin: 4px 0; padding: 6px; border-radius: 4px; background: rgba(0,0,0,0.2);
+}
+.bm-panel .bm-preset {
+  position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 4px; border: 1px solid transparent; border-radius: 4px; cursor: pointer;
+}
+.bm-panel .bm-preset:hover { border-color: var(--color-warm-1, #ee9b3a); background: rgba(255,255,255,0.05); }
+.bm-panel .bm-preset img { border: none; border-radius: 4px; object-fit: cover; pointer-events: none; }
+.bm-panel .bm-preset span { font-size: 10px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; pointer-events: none; }
+.bm-panel .bm-preset-del {
+  position: absolute; top: -4px; right: -4px; width: 18px; height: 18px; padding: 0;
+  border-radius: 50%; border: none; background: rgba(224,72,58,0.85); color: #fff; font-size: 10px; line-height: 1;
+  opacity: 0; transition: opacity 0.1s;
+}
+.bm-panel .bm-preset:hover .bm-preset-del { opacity: 1; }

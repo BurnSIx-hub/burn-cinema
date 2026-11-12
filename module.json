@@ -1,7 +1,7 @@
 {
   "id": "burn-cinema",
   "title": "🔥 Cinema",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "compatibility": {
     "minimum": "13",
     "verified": "14"
@@ -14,7 +14,7 @@
   ],
   "url": "https://github.com/BurnSIx-hub/burn-cinema",
   "manifest": "https://github.com/BurnSIx-hub/burn-cinema/releases/latest/download/module.json",
-  "download": "https://github.com/BurnSIx-hub/burn-cinema/releases/download/v1.0.2/module.zip",
+  "download": "https://github.com/BurnSIx-hub/burn-cinema/releases/download/v1.1.0/module.zip",
   "license": "LICENSE",
   "readme": "https://github.com/BurnSIx-hub/burn-cinema#readme",
   "esmodules": [
@@ -23,6 +23,7 @@
     "els/scripts/main.js",
     "ratings/scripts/main.mjs",
     "npc/scripts/main.mjs",
+    "madness/scripts/index.js",
     "scripts/catalog.js"
   ],
   "styles": [
@@ -31,6 +32,7 @@
     "els/styles/loading.css",
     "ratings/styles/session-ratings.css",
     "npc/styles/npc-cards.css",
+    "madness/styles/madness.css",
     "styles/catalog.css"
   ],
   "languages": [
@@ -83,6 +85,16 @@
       "lang": "en",
       "name": "English",
       "path": "npc/lang/en.json"
+    },
+    {
+      "lang": "ru",
+      "name": "Русский",
+      "path": "madness/lang/ru.json"
+    },
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "madness/lang/en.json"
     }
   ],
   "socket": true,
@@ -91,6 +103,13 @@
       {
         "id": "burnhub",
         "type": "module"
+      }
+    ],
+    "recommends": [
+      {
+        "id": "lib-wrapper",
+        "type": "module",
+        "reason": "«Восприятие безумия» подменяет видимость, облик и имя объектов у клиента цели. Без libWrapper обёртки ставятся прямой подменой прототипа."
       }
     ]
   }

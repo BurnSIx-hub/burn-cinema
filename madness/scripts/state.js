@@ -72,6 +72,9 @@ export async function updateTarget(userId, patch) {
   const cur = foundry.utils.mergeObject(defaultTarget(), all[userId] ?? {}, { inplace: false });
   const next = foundry.utils.mergeObject(cur, patch, { inplace: false });
   for (const k of ["held", "ambient"]) if (Array.isArray(patch[k])) next[k] = [...patch[k]];
+  // Трек заменяем целиком: слияние оставило бы поля прошлого трека
+  // (streamUrl файла перебил бы новый ролик YouTube).
+  if (patch.music?.track) next.music.track = { ...patch.music.track };
   all[userId] = next;
   await game.settings.set(MODULE_ID, SETTING_TARGETS, all);
   return next;

@@ -15,7 +15,7 @@ import { INTENSITY, appliesToScene, rand } from "./constants.js";
 import { getDeck, getTarget, isStopped, setStop } from "./state.js";
 import { emit } from "./net.js";
 import { OV, keyOf } from "./wrap.js";
-import { startMadnessMusic, stopMadnessMusic, isMusicIsolated } from "./music.js";
+import { startMadnessMusic, stopMadnessMusic, isMadnessMusicOn, onMadnessMusicChange } from "./music.js";
 
 /* ------------------------------ Текстуры --------------------------------- */
 
@@ -112,7 +112,7 @@ class VisionEngine {
       intensity: this.#ambientLevel,
       stopped: this.stopped,
       sceneId: canvas.scene?.id ?? null,
-      music: isMusicIsolated()
+      music: isMadnessMusicOn()
     };
     const json = JSON.stringify(payload);
     if (!force && json === this.#lastReport) return;
@@ -302,7 +302,9 @@ class VisionEngine {
   #syncMusic(t) {
     const m = t.music ?? {};
     const on = !this.stopped && m.enabled && m.track;
-    const job = on ? startMadnessMusic(m.track, { isolate: m.isolate !== false }) : stopMadnessMusic();
+    const job = on
+      ? startMadnessMusic(m.track, { isolate: m.isolate !== false, since: m.since ?? null })
+      : stopMadnessMusic();
     Promise.resolve(job)
       .then(() => this.report())
       .catch((err) => console.warn("burn-cinema | безумие: музыка", err));
@@ -310,3 +312,6 @@ class VisionEngine {
 }
 
 export const engine = new VisionEngine();
+
+// Трек безумия кончился сам (без изоляции его сменила общая музыка) — сказать ГМ.
+onMadnessMusicChange(() => engine.report());

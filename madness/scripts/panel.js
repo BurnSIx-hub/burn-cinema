@@ -638,7 +638,9 @@ export class MadnessPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     const track = this.#readTrack();
     if (!track) return;
     const isolate = !!this.element.querySelector("[name=music-isolate]")?.checked;
-    await updateTarget(userId, { music: { enabled: true, isolate, track } });
+    // since — новый запуск: тот же трек можно включить снова, если общая
+    // музыка уже сменила его у цели без изоляции.
+    await updateTarget(userId, { music: { enabled: true, isolate, track, since: Date.now() } });
     ui.notifications.info(F("MusicStarted", { name: game.users.get(userId)?.name }));
   }
 

@@ -43,11 +43,13 @@ let _spentRun = null;   // этот запуск уже сменила обща�
 let _sharedTitle = "";  // название общего трека — его и показывает мини-плеер
 let _onChange = null;   // играет ли трек безумия — сообщить движку
 
-async function importLM(file) {
+/** optional: файла может не быть в старой версии Lazy Music (loudness.mjs
+ *  появился в 2.14) — тогда молча обходимся без него. */
+async function importLM(file, { optional = false } = {}) {
   try {
     return await import(lmPath(file));
   } catch (err) {
-    console.warn(`burn-cinema | Lazy Music: не загрузился ${file} — музыка безумия отключена`, err);
+    if (!optional) console.warn(`burn-cinema | Lazy Music: не загрузился ${file} — музыка безумия отключена`, err);
     return null;
   }
 }
@@ -77,8 +79,8 @@ function ensurePatched() {
   _patching ??= (async () => {
     const PR = (await importLM("player-receiver.mjs"))?.PlayerReceiver;
     if (!PR) return false;
-    _mini = (await importLM("mini-player.mjs"))?.LMMini ?? null;
-    _loudness = (await importLM("loudness.mjs"))?.LMLoudness ?? null;
+    _mini = (await importLM("mini-player.mjs", { optional: true }))?.LMMini ?? null;
+    _loudness = (await importLM("loudness.mjs", { optional: true }))?.LMLoudness ?? null;
     _receiver = PR;
 
     _orig = PR[PATCHED] ?? {

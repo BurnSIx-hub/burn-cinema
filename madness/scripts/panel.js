@@ -350,6 +350,11 @@ export class MadnessPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       parts.push(F("StatusOtherScene", { name: game.scenes.get(s.sceneId)?.name ?? "?" }));
     }
     if (s.music) parts.push(L("StatusMusic"));
+    for (const p of s.problems ?? []) {
+      const v = deck.get(p.id);
+      const name = v ? (v.name || this.#autoName(v)) : "?";
+      parts.push(`⚠ ${F(p.why === "img" ? "ProblemImg" : "ProblemTokens", { name })}`);
+    }
     dot?.classList.toggle("live", !s.stopped && names.length > 0);
     dot?.classList.toggle("stop", !!s.stopped);
     if (text) text.textContent = parts.join(" · ");

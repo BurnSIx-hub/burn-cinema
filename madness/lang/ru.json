@@ -14,6 +14,8 @@
   "burncinema.Madness.StatusAmbient": "фон",
   "burncinema.Madness.StatusOtherScene": "на сцене «{name}»",
   "burncinema.Madness.StatusMusic": "своя музыка",
+  "burncinema.Madness.ProblemImg": "облик «{name}» не применён: картинка не загрузилась у цели",
+  "burncinema.Madness.ProblemTokens": "облик «{name}» не применён: его токенов нет на сцене цели",
 
   "burncinema.Madness.StoppedBanner": "Игрок нажал стоп. Пока стоп не снят, ему ничего не показывается.",
   "burncinema.Madness.Resume": "Снять стоп",

@@ -14,6 +14,8 @@
   "burncinema.Madness.StatusAmbient": "ambient",
   "burncinema.Madness.StatusOtherScene": "on scene “{name}”",
   "burncinema.Madness.StatusMusic": "own music",
+  "burncinema.Madness.ProblemImg": "appearance “{name}” not applied: the image failed to load for the target",
+  "burncinema.Madness.ProblemTokens": "appearance “{name}” not applied: its tokens are not on the target's scene",
 
   "burncinema.Madness.StoppedBanner": "The player pressed stop. Nothing is shown to them until you lift it.",
   "burncinema.Madness.Resume": "Lift stop",

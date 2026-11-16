@@ -49,6 +49,8 @@ class VisionEngine {
   #filter = null;          // ColorMatrixFilter на canvas.stage
   #loops = new Map();      // visionId -> Promise<Sound> (удерживаемый звук)
   #lastReport = "";
+  #problems = [];         // почему видение не применилось у этой цели
+  #warned = new Set();     // о чём уже предупредили в консоли
 
   /** Игрок нажал стоп (флаг на User или ещё не дошедший до сервера). */
   get stopped() {
@@ -112,7 +114,8 @@ class VisionEngine {
       intensity: this.#ambientLevel,
       stopped: this.stopped,
       sceneId: canvas.scene?.id ?? null,
-      music: isMadnessMusicOn()
+      music: isMadnessMusicOn(),
+      problems: this.#problems
     };
     const json = JSON.stringify(payload);
     if (!force && json === this.#lastReport) return;
@@ -178,6 +181,8 @@ class VisionEngine {
     await Promise.all(visions.filter((v) => v.kind === "appearance" && v.img).map((v) => loadTex(v.img)));
     if (seq !== this.#seq) return; // пока грузили, пришло состояние новее
 
+    this.#problems = this.#checkAppearance(visions);
+
     const show = new Set();
     const hide = new Set();
     const look = new Map();
@@ -240,8 +245,35 @@ class VisionEngine {
 
     this.#applyTint(tint);
     this.#syncLoops(deck, loops);
-    this.#shown = visions.map((v) => v.id);
+    const failed = new Set(this.#problems.map((p) => p.id));
+    this.#shown = visions.filter((v) => !failed.has(v.id)).map((v) => v.id);
     this.report();
+  }
+
+  /**
+   * Облик, который цель не увидит: картинка не загрузилась или (для видения,
+   * привязанного к сцене) его токенов на сцене нет. Без этого облик молча не
+   * применялся, и ни ГМ, ни игрок не знали почему.
+   */
+  #checkAppearance(visions) {
+    const problems = [];
+    for (const v of visions) {
+      if (v.kind !== "appearance") continue;
+      let why = null;
+      if (v.img && !texAlive(TEX_CACHE.get(v.img))) why = "img";
+      else if (v.sceneId && !(canvas.tokens?.placeables ?? []).some((tk) => (v.tokens ?? []).includes(tk.document.id))) {
+        why = "tokens";
+      }
+      if (!why) continue;
+      problems.push({ id: v.id, why });
+      const key = `${v.id}:${why}:${v.img ?? ""}`;
+      if (this.#warned.has(key)) continue;
+      this.#warned.add(key);
+      console.warn(why === "img"
+        ? `burn-cinema | безумие: облик «${v.name}» не применён — не загрузилась картинка ${v.img}`
+        : `burn-cinema | безумие: облик «${v.name}» не применён — его токенов нет на сцене ${canvas.scene?.name ?? ""}`);
+    }
+    return problems;
   }
 
   /* ------------------------------ Цвет ------------------------------------ */

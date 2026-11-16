@@ -12,7 +12,7 @@
 
 import {
   MODULE_ID, SETTING_LAST_TARGET, SETTING_TARGETS, KINDS, KIND_ICONS, FLASH_SECONDS,
-  defaultTarget, newVision, appliesToScene
+  defaultTarget, newVision, appliesToScene, normalizeLook, isPlainLook, RING_MODES
 } from "./constants.js";
 import {
   getDeck, getVision, saveVision, deleteVision,
@@ -49,6 +49,7 @@ function emptyDraft(prev = {}) {
     img: "",
     label: "",
     byActor: false,
+    ...lookDraft(),
     autoHide: true,
     hue: 0,
     saturation: 1,
@@ -59,6 +60,52 @@ function emptyDraft(prev = {}) {
     flashSec: prev.flashSec ?? FLASH_SECONDS,
     musicSrc: prev.musicSrc ?? ""
   };
+}
+
+/** Поля черновика для настроек облика (из сохранённого облика или нейтральные). */
+function lookDraft(look) {
+  const k = normalizeLook(look);
+  return {
+    lookScale: k.scale,
+    lookMirrorX: k.mirrorX,
+    lookMirrorY: k.mirrorY,
+    lookRing: k.ring,
+    lookRingColorOn: !!k.ringColor,
+    lookRingColor: k.ringColor || "#ffffff",
+    lookRingBgOn: !!k.ringBg,
+    lookRingBg: k.ringBg || "#000000",
+    lookTint: k.tint || "#ffffff",
+    lookAlpha: k.alpha
+  };
+}
+
+/** Настройки облика из черновика. */
+function lookFromDraft(d) {
+  return normalizeLook({
+    scale: d.lookScale,
+    mirrorX: d.lookMirrorX,
+    mirrorY: d.lookMirrorY,
+    ring: d.lookRing,
+    ringColor: d.lookRingColorOn ? d.lookRingColor : "",
+    ringBg: d.lookRingBgOn ? d.lookRingBg : "",
+    tint: d.lookTint,
+    alpha: d.lookAlpha
+  });
+}
+
+/** Коротко о настройках облика — для карточки в колоде. */
+function lookSummary(look) {
+  const k = normalizeLook(look);
+  const parts = [];
+  if (k.scale !== 1) parts.push(`×${k.scale}`);
+  if (k.mirrorX) parts.push("↔");
+  if (k.mirrorY) parts.push("↕");
+  if (k.ring === "off") parts.push(L("LookNoRing"));
+  if (k.ring === "on") parts.push(L("LookWithRing"));
+  if (k.ringColor || k.ringBg) parts.push(L("LookRingColors"));
+  if (k.tint) parts.push(L("LookTinted"));
+  if (k.alpha !== 1) parts.push(`${Math.round(k.alpha * 100)}%`);
+  return parts.join(", ");
 }
 
 /** Имя объекта сцены по id (сцена может быть не текущей). */
@@ -151,6 +198,10 @@ export class MadnessPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     root.addEventListener("input", (ev) => {
       const el = ev.target;
       if (el?.dataset?.draft) this.#readDraftField(el);
+      if (el?.type === "range" && el.dataset?.draft) {
+        const out = el.parentElement?.querySelector("output");
+        if (out) out.textContent = el.value;
+      }
       if (el?.name === "intensity") {
         const out = root.querySelector("[data-intensity-label]");
         if (out) out.textContent = L(`Intensity${el.value}`);
@@ -179,6 +230,8 @@ export class MadnessPanel extends HandlebarsApplicationMixin(ApplicationV2) {
           this.render(); // подсказка про выделение зависит от галки
           break;
       }
+      // Цвета кольца не нужны, когда кольцо снимаем.
+      if (el?.dataset?.draft === "lookRing") this.render();
     });
   }
 
@@ -227,7 +280,9 @@ export class MadnessPanel extends HandlebarsApplicationMixin(ApplicationV2) {
         const who = v.actors?.length
           ? F("AllTokensOf", { names: v.actors.map((id) => game.actors.get(id)?.name ?? "?").join(", ") })
           : objects();
-        return v.label ? `${who} → «${v.label}»` : who;
+        const extra = lookSummary(v.look);
+        const base = v.label ? `${who} → «${v.label}»` : who;
+        return extra ? `${base} · ${extra}` : base;
       }
       case "phantom":
       case "vanish":
@@ -316,6 +371,12 @@ export class MadnessPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       isSound: d.kind === "sound",
       needsSelection: ["appearance", "phantom", "vanish"].includes(d.kind),
       presets: getPresets(),
+      ringModes: RING_MODES.map((m) => ({
+        value: m,
+        label: L(`LookRingMode.${m}`),
+        selected: d.lookRing === m
+      })),
+      lookRingOff: d.lookRing === "off",
       musicPresets: getMusicPresets(),
       music,
       musicTrackName: music.track?.displayTitle || music.track?.title || "",
@@ -439,6 +500,7 @@ export class MadnessPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       img: v.img ?? "",
       label: v.label ?? "",
       byActor: (v.actors?.length ?? 0) > 0,
+      ...lookDraft(v.look),
       autoHide: false,
       hue: v.tint?.hue ?? 0,
       saturation: v.tint?.saturation ?? 1,
@@ -525,7 +587,8 @@ export class MadnessPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       case "appearance": {
         v.img = String(d.img ?? "").trim();
         v.label = String(d.label ?? "").trim();
-        if (!v.img && !v.label) return warn("NeedImageOrLabel");
+        v.look = lookFromDraft(d);
+        if (!v.img && !v.label && isPlainLook(v.look)) return warn("NeedImageOrLabel");
         if (sel.tokens.length) {
           if (d.byActor) {
             v.actors = [...new Set(sel.tokens.map((t) => t.document.actorId).filter(Boolean))];

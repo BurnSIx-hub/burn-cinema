@@ -117,6 +117,42 @@
       <div class="bm-row">
         <input type="text" data-draft="label" value="{{draft.label}}" placeholder="{{localize "burncinema.Madness.LabelPlaceholder"}}">
       </div>
+      <div class="bm-look">
+        <div class="bm-look-row">
+          <span class="bm-look-label">{{localize "burncinema.Madness.LookScale"}}</span>
+          <input type="range" min="0.2" max="3" step="0.05" data-draft="lookScale" value="{{draft.lookScale}}">
+          <output>{{draft.lookScale}}</output>
+        </div>
+        <div class="bm-look-row">
+          <span class="bm-look-label">{{localize "burncinema.Madness.LookMirror"}}</span>
+          <label class="bm-inline" data-tooltip="{{localize "burncinema.Madness.LookMirrorX"}}"><input type="checkbox" data-draft="lookMirrorX" {{#if draft.lookMirrorX}}checked{{/if}}> ↔</label>
+          <label class="bm-inline" data-tooltip="{{localize "burncinema.Madness.LookMirrorY"}}"><input type="checkbox" data-draft="lookMirrorY" {{#if draft.lookMirrorY}}checked{{/if}}> ↕</label>
+        </div>
+        <div class="bm-look-row">
+          <span class="bm-look-label">{{localize "burncinema.Madness.LookRing"}}</span>
+          <select data-draft="lookRing">
+            {{#each ringModes}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}
+          </select>
+        </div>
+        {{#unless lookRingOff}}
+          <div class="bm-look-row">
+            <span class="bm-look-label"></span>
+            <label class="bm-inline"><input type="checkbox" data-draft="lookRingColorOn" {{#if draft.lookRingColorOn}}checked{{/if}}> {{localize "burncinema.Madness.LookRingColor"}}</label>
+            <input type="color" data-draft="lookRingColor" value="{{draft.lookRingColor}}">
+            <label class="bm-inline"><input type="checkbox" data-draft="lookRingBgOn" {{#if draft.lookRingBgOn}}checked{{/if}}> {{localize "burncinema.Madness.LookRingBg"}}</label>
+            <input type="color" data-draft="lookRingBg" value="{{draft.lookRingBg}}">
+          </div>
+        {{/unless}}
+        <div class="bm-look-row">
+          <span class="bm-look-label">{{localize "burncinema.Madness.LookTint"}}</span>
+          <input type="color" data-draft="lookTint" value="{{draft.lookTint}}" data-tooltip="{{localize "burncinema.Madness.LookTintHint"}}">
+        </div>
+        <div class="bm-look-row">
+          <span class="bm-look-label">{{localize "burncinema.Madness.LookAlpha"}}</span>
+          <input type="range" min="0.1" max="1" step="0.05" data-draft="lookAlpha" value="{{draft.lookAlpha}}">
+          <output>{{draft.lookAlpha}}</output>
+        </div>
+      </div>
       <label class="bm-check">
         <input type="checkbox" name="byActor" data-draft="byActor" {{#if draft.byActor}}checked{{/if}}>
         {{localize "burncinema.Madness.ByActor"}}

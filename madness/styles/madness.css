@@ -48,6 +48,16 @@
 .bm-panel .bm-slider { display: flex; align-items: center; gap: 8px; width: 100%; }
 .bm-panel .bm-slider input { flex: 1 1 auto; }
 
+/* Настройки облика */
+.bm-panel .bm-look { display: flex; flex-direction: column; gap: 4px; margin: 4px 0; }
+.bm-panel .bm-look-row { display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; }
+.bm-panel .bm-look-label { flex: 0 0 7.5em; font-size: 12px; opacity: 0.85; }
+.bm-panel .bm-look-row input[type="range"] { flex: 1 1 auto; width: auto; min-width: 0; }
+.bm-panel .bm-look-row output { flex: 0 0 2.6em; text-align: right; font-size: 12px; }
+.bm-panel .bm-look-row select { flex: 1 1 auto; width: auto; min-width: 0; }
+.bm-panel .bm-look-row input[type="color"] { flex: 0 0 32px; width: 32px; height: 22px; padding: 0; border: none; background: none; }
+.bm-panel .bm-look-row .bm-inline { font-size: 12px; white-space: nowrap; }
+
 /* Сила фона */
 .bm-panel .bm-intensity { flex-wrap: nowrap; }
 .bm-panel .bm-intensity input { flex: 1 1 auto; width: auto; min-width: 0; }

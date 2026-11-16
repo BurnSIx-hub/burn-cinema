@@ -11,10 +11,10 @@
  * набора цели и показываем вспышкой случайной длительности.
  */
 
-import { INTENSITY, appliesToScene, rand } from "./constants.js";
+import { INTENSITY, appliesToScene, rand, normalizeLook, isPlainLook } from "./constants.js";
 import { getDeck, getTarget, isStopped, setStop } from "./state.js";
 import { emit } from "./net.js";
-import { OV, keyOf } from "./wrap.js";
+import { OV, LOOKED, keyOf, lookForDoc, lookSig } from "./wrap.js";
 import { startMadnessMusic, stopMadnessMusic, isMadnessMusicOn, onMadnessMusicChange } from "./music.js";
 
 /* ------------------------------ Текстуры --------------------------------- */
@@ -193,9 +193,12 @@ class VisionEngine {
     for (const v of visions) {
       switch (v.kind) {
         case "appearance": {
+          // Картинка, которая не загрузилась, облик не ломает: остальные
+          // настройки (масштаб, кольцо, оттенок…) всё равно применяются.
           const tex = v.img ? TEX_CACHE.get(v.img) : null;
-          const l = { tex: texAlive(tex) ? tex : null, label: v.label || "" };
-          if (!l.tex && !l.label) break;
+          const settings = normalizeLook(v.look);
+          const l = { img: texAlive(tex) ? v.img : null, label: v.label || "", look: settings };
+          if (!l.img && !l.label && isPlainLook(settings)) break;
           for (const id of v.tokens ?? []) look.set(id, l);
           for (const id of v.actors ?? []) lookByActor.set(id, l);
           break;
@@ -235,7 +238,7 @@ class VisionEngine {
         if (!vis && !lk) continue;
         const flags = {};
         if (vis) { flags.refreshState = true; flags.refreshVisibility = true; }
-        if (lk) { flags.refreshMesh = true; flags.refreshNameplate = true; }
+        if (lk) flags.refreshNameplate = true; // картинку и кольцо — через #applyLooks
         tok.renderFlags.set(flags);
       }
       for (const tile of canvas.tiles?.placeables ?? []) {
@@ -243,11 +246,40 @@ class VisionEngine {
       }
     }
 
+    if (ready) this.#applyLooks();
     this.#applyTint(tint);
     this.#syncLoops(deck, loops);
     const failed = new Set(this.#problems.map((p) => p.id));
     this.#shown = visions.filter((v) => !failed.has(v.id)).map((v) => v.id);
     this.report();
+  }
+
+  /**
+   * Облик меняет данные токена (wrap.js → TokenDocument#prepareData), а не
+   * только картинку меша: так Foundry сама рисует кольцо, масштаб, отражение
+   * и оттенок. Документ, чей облик сменился или снят, пересчитываем, а его
+   * токен на холсте перерисовываем целиком — текстура и кольцо грузятся в
+   * Token#draw. Нетронутые токены не трогаем.
+   */
+  #applyLooks() {
+    const docs = new Set(LOOKED.keys());
+    for (const tok of canvas.tokens?.placeables ?? []) {
+      if (lookForDoc(tok.document)) docs.add(tok.document);
+    }
+    for (const doc of docs) {
+      const want = lookSig(lookForDoc(doc));
+      if (want === (LOOKED.get(doc) ?? "")) continue;
+      // Токен удалён — забываем его.
+      if (!doc.parent?.tokens?.has(doc.id)) { LOOKED.delete(doc); continue; }
+      try {
+        doc.reset();
+        if (!want) LOOKED.delete(doc);
+        const tok = doc.object;
+        if (tok && !tok.destroyed) tok.renderFlags.set({ redraw: true });
+      } catch (err) {
+        console.warn(`burn-cinema | безумие: не удалось перерисовать токен ${doc.name}`, err);
+      }
+    }
   }
 
   /**

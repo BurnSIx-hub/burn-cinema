@@ -2,13 +2,17 @@
  * Обёртки над placeable-объектами Foundry v14 — через них цель видит видения.
  *
  * Мы не рисуем ничего своего поверх сцены. Мы отвечаем Foundry на вопросы
- * «виден ли объект?» и «какая у токена картинка и имя?», а рисует он сам:
- * со светом, туманом, высотой, окклюзией и видео.
+ * «виден ли объект?» и «как выглядит токен?», а рисует он сам: со светом,
+ * туманом, высотой, окклюзией, кольцом dnd5e и видео.
  *
  *   • Token#isVisible, Tile#_refreshVisibility — призрак виден цели, пропажа нет;
  *   • _refreshState (Token, Tile)   — призрак без прозрачности «скрытого»;
- *   • Token#_refreshMesh            — подмена текстуры (облик);
- *   • Token#_refreshNameplate       — подмена имени над токеном.
+ *   • TokenDocument#prepareData     — облик: картинка, масштаб, отражение,
+ *     кольцо и его цвета, оттенок, прозрачность. Меняются только данные
+ *     документа в памяти этого клиента: в мир ничего не пишется, а окно
+ *     настроек токена показывает записанные значения (_source);
+ *   • Token#_refreshNameplate       — подмена имени над токеном. Имя самого
+ *     документа не трогаем: из него берутся подписи в чате и трекере.
  *
  * Ключи объектов — "Token.<id>" / "Tile.<id>" на ТЕКУЩЕЙ сцене (движок
  * наполняет OV только для видений этой сцены).
@@ -20,25 +24,82 @@ import { MODULE_ID } from "./constants.js";
 export const OV = {
   show: new Set(),          // ключи объектов, которые цель видит, хотя они hidden
   hide: new Set(),          // ключи объектов, которых цель не видит
-  look: new Map(),          // tokenId -> { tex, label }
-  lookByActor: new Map()    // actorId -> { tex, label }
+  look: new Map(),          // tokenId -> { img, label, look }
+  lookByActor: new Map()    // actorId -> { img, label, look }
 };
 
-/** Оригинальные текстуры подменённых мешей (ключ — меш: перерисовка токена
- *  создаёт новый меш, и устаревший оригинал не вернётся по ошибке). */
-const ORIGINAL_TEX = new WeakMap();
+/**
+ * Документы токенов, к данным которых сейчас применён облик, и подпись
+ * применённого облика. По ней движок понимает, кого пересчитать и
+ * перерисовать, когда облик сменился или снят.
+ */
+export const LOOKED = new Map(); // TokenDocument -> string
 
 export function keyOf(obj) {
   return `${obj?.document?.documentName}.${obj?.document?.id}`;
 }
 
-export function lookFor(token) {
-  const doc = token?.document;
+/** Облик для документа токена (по id токена или по его актёру). */
+export function lookForDoc(doc) {
   if (!doc) return null;
   return OV.look.get(doc.id) ?? (doc.actorId ? OV.lookByActor.get(doc.actorId) : null) ?? null;
 }
 
-/* ------------------------------ Обёртки ---------------------------------- */
+/** Подпись того, что облик меняет в данных токена (имя — отдельно). */
+export function lookSig(entry) {
+  return entry ? JSON.stringify([entry.img ?? null, entry.look ?? null]) : "";
+}
+
+/* ------------------------------ Облик ------------------------------------ */
+
+function colorOf(hex) {
+  try { return foundry.utils.Color.from(hex); } catch (_e) { return null; }
+}
+
+/** Наложить облик на подготовленные данные токена. */
+function applyLook(doc) {
+  const entry = lookForDoc(doc);
+  if (!entry) { LOOKED.delete(doc); return; }
+  const k = entry.look ?? {};
+  const tex = doc.texture;
+  const ring = doc.ring;
+
+  if (entry.img && tex) tex.src = entry.img;
+  if (ring) {
+    if (k.ring === "off") ring.enabled = false;
+    else if (k.ring === "on") ring.enabled = true;
+    if (ring.enabled && ring.subject) {
+      // Внутри кольца рисуется subject.texture — туда тоже картинка облика.
+      if (entry.img) ring.subject.texture = entry.img;
+      else ring.subject.texture ||= doc._inferRingSubjectTexture?.() ?? tex?.src;
+    }
+    if (ring.enabled && ring.colors) {
+      if (k.ringColor) ring.colors.ring = colorOf(k.ringColor) ?? ring.colors.ring;
+      if (k.ringBg) ring.colors.background = colorOf(k.ringBg) ?? ring.colors.background;
+    }
+  }
+  if (tex) {
+    const scale = k.scale ?? 1;
+    // Отражение — относительно того, как токен уже повёрнут.
+    tex.scaleX = ((tex.scaleX < 0) !== !!k.mirrorX ? -1 : 1) * Math.abs(tex.scaleX) * scale;
+    tex.scaleY = ((tex.scaleY < 0) !== !!k.mirrorY ? -1 : 1) * Math.abs(tex.scaleY) * scale;
+    if (k.tint) tex.tint = colorOf(k.tint) ?? tex.tint;
+  }
+  if ((k.alpha ?? 1) !== 1) doc.alpha = doc.alpha * k.alpha;
+  LOOKED.set(doc, lookSig(entry));
+}
+
+function tokenDocPrepareData(wrapped, ...args) {
+  const r = wrapped(...args);
+  try {
+    applyLook(this);
+  } catch (err) {
+    console.warn("burn-cinema | безумие: облик не наложился", err);
+  }
+  return r;
+}
+
+/* ------------------------------ Видимость -------------------------------- */
 
 function tokenIsVisible(wrapped, ...args) {
   const key = keyOf(this);
@@ -70,7 +131,7 @@ function tileRefreshVisibility(wrapped, ...args) {
   return r;
 }
 
-/* TokenDocument#prepareDerivedData у игрока делает скрытому токену
+/* TokenDocument#prepareBaseData у игрока делает скрытому токену
  * alpha = 0 (у ГМ — 0.5). Призраку возвращаем исходную прозрачность. */
 function phantomTokenAlpha(token) {
   if (!token.mesh || !OV.show.has(keyOf(token))) return;
@@ -95,26 +156,14 @@ function tileRefreshState(wrapped, ...args) {
 }
 
 function tokenRefreshMesh(wrapped, ...args) {
-  const mesh = this.mesh;
-  if (mesh && !mesh.destroyed) {
-    const tex = lookFor(this)?.tex ?? null;
-    if (tex && mesh.texture !== tex) {
-      if (!ORIGINAL_TEX.has(mesh)) ORIGINAL_TEX.set(mesh, mesh.texture);
-      mesh.texture = tex;
-    } else if (!tex && ORIGINAL_TEX.has(mesh)) {
-      const orig = ORIGINAL_TEX.get(mesh);
-      ORIGINAL_TEX.delete(mesh);
-      mesh.texture = (orig && !orig.destroyed && orig.baseTexture) ? orig : (this.texture ?? orig);
-    }
-  }
-  const r = wrapped(...args); // штатный ресайз уже под новую текстуру
-  phantomTokenAlpha(this);    // _refreshMesh тоже ставит mesh.alpha
+  const r = wrapped(...args);
+  phantomTokenAlpha(this); // _refreshMesh тоже ставит mesh.alpha
   return r;
 }
 
 function tokenRefreshNameplate(wrapped, ...args) {
   const r = wrapped(...args);
-  const label = lookFor(this)?.label;
+  const label = lookForDoc(this.document)?.label;
   if (label && this.nameplate) this.nameplate.text = label;
   return r;
 }
@@ -152,21 +201,23 @@ export function installWrappers() {
   if (installed) return;
   installed = true;
 
+  // [документ, класс в CONFIG, метод, обёртка, это геттер]
   const list = [
-    ["Token", "isVisible", tokenIsVisible, true],
-    ["Tile", "_refreshVisibility", tileRefreshVisibility, false],
-    ["Token", "_refreshState", tokenRefreshState, false],
-    ["Tile", "_refreshState", tileRefreshState, false],
-    ["Token", "_refreshMesh", tokenRefreshMesh, false],
-    ["Token", "_refreshNameplate", tokenRefreshNameplate, false]
+    ["Token", "objectClass", "isVisible", tokenIsVisible, true],
+    ["Tile", "objectClass", "_refreshVisibility", tileRefreshVisibility, false],
+    ["Token", "objectClass", "_refreshState", tokenRefreshState, false],
+    ["Tile", "objectClass", "_refreshState", tileRefreshState, false],
+    ["Token", "objectClass", "_refreshMesh", tokenRefreshMesh, false],
+    ["Token", "objectClass", "_refreshNameplate", tokenRefreshNameplate, false],
+    ["Token", "documentClass", "prepareData", tokenDocPrepareData, false]
   ];
 
   const lw = globalThis.libWrapper;
-  for (const [doc, name, fn, getter] of list) {
-    const path = `CONFIG.${doc}.objectClass.prototype.${name}`;
+  for (const [doc, cls, name, fn, getter] of list) {
+    const path = `CONFIG.${doc}.${cls}.prototype.${name}`;
     try {
       if (lw) lw.register(MODULE_ID, path, fn, "WRAPPER");
-      else if (!patch(CONFIG[doc].objectClass, name, fn, getter)) {
+      else if (!patch(CONFIG[doc][cls], name, fn, getter)) {
         console.warn(`burn-cinema | безумие: не нашёл ${path} — эта подмена не работает`);
       }
     } catch (err) {

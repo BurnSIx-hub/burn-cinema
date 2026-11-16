@@ -87,10 +87,58 @@ export function newVision(kind, data = {}) {
     actors: [],     // id актёров: облик для любого их токена на любой сцене
     img: "",        // облик: картинка
     label: "",      // облик: имя над токеном ("" — не менять)
+    look: { ...DEFAULT_LOOK }, // облик: масштаб, отражение, кольцо, оттенок
     tint: { hue: 0, saturation: 1, brightness: 1 },
     sound: { src: "", volume: 0.8 },
     ...data
   };
+}
+
+/**
+ * Настройки облика поверх токена цели. Нейтральные значения ничего не меняют:
+ * масштаб 1, без отражения, кольцо «как у токена», без своих цветов, полная
+ * непрозрачность. Цвета — "#rrggbb" или "" (не менять).
+ */
+export const DEFAULT_LOOK = Object.freeze({
+  scale: 1,
+  mirrorX: false,
+  mirrorY: false,
+  ring: "keep",      // "keep" — как у токена, "off" — снять, "on" — надеть
+  ringColor: "",
+  ringBg: "",
+  tint: "",
+  alpha: 1
+});
+
+export const RING_MODES = ["keep", "off", "on"];
+
+const HEX_COLOR = /^#[0-9a-f]{6}$/i;
+
+/** Привести настройки облика к допустимым (старые видения их не имеют). */
+export function normalizeLook(look = {}) {
+  const num = (x, lo, hi, d) => {
+    const n = Number(x);
+    return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d;
+  };
+  const hex = (c) => (typeof c === "string" && HEX_COLOR.test(c)) ? c.toLowerCase() : "";
+  const tint = hex(look?.tint);
+  return {
+    scale: num(look?.scale, 0.1, 5, 1),
+    mirrorX: !!look?.mirrorX,
+    mirrorY: !!look?.mirrorY,
+    ring: RING_MODES.includes(look?.ring) ? look.ring : "keep",
+    ringColor: hex(look?.ringColor),
+    ringBg: hex(look?.ringBg),
+    tint: tint === "#ffffff" ? "" : tint, // белый оттенок — без оттенка
+    alpha: num(look?.alpha, 0.05, 1, 1)
+  };
+}
+
+/** Настройки облика ничего не меняют. */
+export function isPlainLook(look) {
+  const k = normalizeLook(look);
+  return k.scale === 1 && !k.mirrorX && !k.mirrorY && k.ring === "keep"
+    && !k.ringColor && !k.ringBg && !k.tint && k.alpha === 1;
 }
 
 /** Видение относится к сцене sceneId? */

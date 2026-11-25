@@ -4,7 +4,8 @@
  * narrator-text (narrator/), epic-loading-screens (els/),
  * session-ratings (ratings/), npc-cards (npc/).
  * Код суб-модулей работает как раньше; настройки хранятся под старыми
- * namespace — миграция данных не нужна. Общий socket-канал module.burn-cinema
+ * namespace — миграция данных не нужна; в «Настройках» они собраны под
+ * 🔥 Cinema (см. categorizeEntry). Общий socket-канал module.burn-cinema
  * (сообщения различаются полем type, коллизий нет).
  */
 
@@ -100,6 +101,40 @@ class CinemaCatalog extends ApplicationV2 {
     });
   }
 }
+
+/* ------------------------- Раздел в «Настройках» -------------------------- */
+
+// Foundry раскладывает настройки по модулю, чей id совпадает с namespace.
+// Старых модулей больше нет, и настройки суб-модулей падали в «Не назначено».
+const LEGACY_NS = new Set([
+  "casting-call", "narrator-text", "epic-loading-screens", "session-ratings", "npc-cards"
+]);
+
+function categorizeEntry(wrapped, namespace, ...args) {
+  // Исходный метод зовём всегда: обёртку WRAPPER, которая не передаёт вызов
+  // дальше, libWrapper снимает.
+  const category = wrapped(namespace, ...args);
+  const cinema = LEGACY_NS.has(namespace) ? game.modules.get("burn-cinema") : null;
+  return cinema ? { id: cinema.id, label: cinema.title } : category;
+}
+
+Hooks.once("setup", () => {
+  const path = "foundry.applications.settings.SettingsConfig.prototype._categorizeEntry";
+  const proto = foundry.applications.settings?.SettingsConfig?.prototype;
+  if (typeof proto?._categorizeEntry !== "function") {
+    console.warn("burn-cinema | нет SettingsConfig#_categorizeEntry — настройки останутся в «Не назначено»");
+    return;
+  }
+  try {
+    if (globalThis.libWrapper) libWrapper.register("burn-cinema", path, categorizeEntry, "WRAPPER");
+    else {
+      const original = proto._categorizeEntry;
+      proto._categorizeEntry = function (...args) { return categorizeEntry.call(this, original.bind(this), ...args); };
+    }
+  } catch (err) {
+    console.error("burn-cinema | не удалось собрать настройки под 🔥 Cinema", err);
+  }
+});
 
 // Каждая карточка — отдельная плитка в папке 🔥 Burn (плоский список).
 // Окно-картотека CinemaCatalog оставлено в коде на будущее, но напрямую

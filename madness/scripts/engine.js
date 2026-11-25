@@ -15,6 +15,7 @@ import { INTENSITY, appliesToScene, rand, normalizeLook, isPlainLook } from "./c
 import { getDeck, getTarget, isStopped, setStop } from "./state.js";
 import { emit } from "./net.js";
 import { OV, LOOKED, keyOf, lookForDoc, lookSig } from "./wrap.js";
+import { syncNameViews } from "./names.js";
 import { startMadnessMusic, stopMadnessMusic, isMadnessMusicOn, onMadnessMusicChange } from "./music.js";
 
 /* ------------------------------ Текстуры --------------------------------- */
@@ -247,6 +248,7 @@ class VisionEngine {
     }
 
     if (ready) this.#applyLooks();
+    syncNameViews(); // имя и картинка облика в трекере и чате
     this.#applyTint(tint);
     this.#syncLoops(deck, loops);
     const failed = new Set(this.#problems.map((p) => p.id));

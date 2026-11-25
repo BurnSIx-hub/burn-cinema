@@ -15,6 +15,7 @@ import {
 import { getDeck, getTarget } from "./state.js";
 import { onAction, dispatch } from "./net.js";
 import { installWrappers } from "./wrap.js";
+import { installNameWrappers } from "./names.js";
 import { engine } from "./engine.js";
 import { MadnessPanel, statusCache } from "./panel.js";
 
@@ -54,7 +55,10 @@ Hooks.once("init", () => {
   });
 });
 
-Hooks.once("setup", installWrappers);
+Hooks.once("setup", () => {
+  installWrappers();
+  installNameWrappers();
+});
 
 /* ------------------------------ Команды ГМ -------------------------------- */
 

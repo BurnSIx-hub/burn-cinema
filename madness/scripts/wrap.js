@@ -12,7 +12,8 @@
  *     документа в памяти этого клиента: в мир ничего не пишется, а окно
  *     настроек токена показывает записанные значения (_source);
  *   • Token#_refreshNameplate       — подмена имени над токеном. Имя самого
- *     документа не трогаем: из него берутся подписи в чате и трекере.
+ *     документа не трогаем: из него ChatMessage.getSpeaker берёт подпись
+ *     сообщений, которые цель отправит в мир. Трекер и чат — в names.js.
  *
  * Ключи объектов — "Token.<id>" / "Tile.<id>" на ТЕКУЩЕЙ сцене (движок
  * наполняет OV только для видений этой сцены).
@@ -173,7 +174,7 @@ function tokenRefreshNameplate(wrapped, ...args) {
 let installed = false;
 
 /** Фолбэк без libWrapper: прямая обёртка метода или геттера в прототипе. */
-function patch(cls, name, fn, getter) {
+export function patch(cls, name, fn, getter) {
   let proto = cls.prototype;
   let desc = null;
   while (proto && !(desc = Object.getOwnPropertyDescriptor(proto, name))) proto = Object.getPrototypeOf(proto);

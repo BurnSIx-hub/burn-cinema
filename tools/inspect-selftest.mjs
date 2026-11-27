@@ -27,7 +27,45 @@ export async function runInspectTests(check) {
   const n1 = normalizeSystem({ checkMode: "weird", visibility: "x", repeat: 5, dc: "15", range: -3, duration: "abc", title: "  Кровать " });
   check("осмотр: мусорные значения чинятся", n1.checkMode === "none" && n1.visibility === "self" && n1.repeat === "remember"
     && n1.dc === 15 && n1.range === 0 && n1.duration === 0 && n1.title === "Кровать", JSON.stringify(n1));
-  check("осмотр: normalizeSystem(null) не падает", normalizeSystem(null).text === "");
+  check("осмотр: normalizeSystem(null) не падает", normalizeSystem(null).title === "");
+
+  // Тексты не живут в регионе (1.3.1)
+  const leaky = normalizeSystem({ text: "секрет", textFail: "провал", gmNote: "заметка", title: "Кровать" });
+  check("осмотр: normalizeSystem выбрасывает тексты", !("text" in leaky) && !("textFail" in leaky) && !("gmNote" in leaky)
+    && !JSON.stringify(leaky).includes("секрет"), JSON.stringify(leaky));
+  check("осмотр: в DEFAULTS нет текстов", !L.SECRET_FIELDS.some((f) => f in DEFAULTS));
+  check("осмотр: textKey проверяется", normalizeSystem({ textKey: "abc" }).textKey === ""
+    && normalizeSystem({ textKey: "0123456789abcdef" }).textKey === "0123456789abcdef"
+    && normalizeSystem({ textKey: "../../etc" }).textKey === "");
+  const k1 = L.newTextKey(), k2 = L.newTextKey();
+  check("осмотр: новые ключи текстов разные и допустимые", k1 !== k2 && L.isTextKey(k1) && k1.length === 16);
+  const wf = L.newWorldFileName("beftest");
+  check("осмотр: имя файла мира — префикс и 128 бит", /^world-beftest-[0-9a-f]{32}\.json$/.test(wf), wf);
+  check("осмотр: hasSecret", L.hasSecret({ text: " x " }) && !L.hasSecret({ text: "  " }) && !L.hasSecret(null));
+
+  // Хранилище
+  const KA = "aaaaaaaaaaaaaaaa", KB = "bbbbbbbbbbbbbbbb";
+  check("осмотр: мусорный файл — пусто", Object.keys(L.parseStoreFile("{oops")).length === 0
+    && Object.keys(L.parseStoreFile({ zones: { "bad key": { text: "x" } } })).length === 0);
+  const merged = L.mergeStore([
+    { name: `world-beftest-${"1".repeat(32)}.json`, data: { zones: { [KA]: { text: "мир" } } } },
+    { name: "kartograf-zzz.json", data: JSON.stringify({ zones: { [KA]: { text: "картограф" }, [KB]: { text: "только картограф" } } }) },
+    { name: `world-other-${"2".repeat(32)}.json`, data: { zones: { [KB]: { text: "чужой мир" } } } }
+  ], "beftest");
+  check("осмотр: файл мира главнее выгрузки", merged.zones[KA].text === "мир", JSON.stringify(merged.zones[KA]));
+  check("осмотр: выгрузка Картографа читается", !!merged.zones[KB]);
+  check("осмотр: главный файл мира найден", merged.mainFile === `world-beftest-${"1".repeat(32)}.json`, merged.mainFile);
+  const built = L.buildStoreFile({ [KA]: { text: "a", junk: 1 }, [KB]: { text: "b" } }, new Set([KA]));
+  check("осмотр: в файл мира идут только ключи мира", Object.keys(built.zones).join() === KA && !("junk" in built.zones[KA]));
+
+  // Перевод зон 1.3.0
+  const { findLegacy } = await import(pathToFileURL(join(root, "inspect/scripts/migrate.mjs")).href);
+  const legacy = findLegacy([{ _id: "S", regions: [{ _id: "R", behaviors: [
+    { _id: "B1", type: BEHAVIOR_TYPE, system: { text: "<p>старое</p>", title: "Кровать" } },
+    { _id: "B2", type: BEHAVIOR_TYPE, system: { textKey: KA, title: "новое" } },
+    { _id: "B3", type: "teleportToken", system: { text: "чужое" } }
+  ] }] }]);
+  check("осмотр: перевод находит только старые зоны осмотра", legacy.length === 1 && legacy[0].behaviorId === "B1", JSON.stringify(legacy));
 
   // Ключ памяти без точек (точка ломает путь флага)
   const k = [memoryKey({ actorId: "A1" }), memoryKey({ tokenId: "T1" }), memoryKey({ userId: "U1" }), memoryKey()];
@@ -56,9 +94,10 @@ export async function runInspectTests(check) {
   check("осмотр: пассивная берёт пассивное, не бросок", resolveOutcome({ checkMode: "passive", dc: 12 }, { passive: 8, total: 20 }) === OUTCOME.FAIL);
 
   // Тексты
-  const sys = { text: "<p>Кровать будто котом изодрана, но кота тут нет</p>", textFail: "" };
+  const sys = { text: "<p>Кровать будто котом изодрана, но кота тут нет</p>", textFail: "" }; // секретная часть
   check("осмотр: успех — основной текст", textFor(sys, "success", "—") === sys.text);
   check("осмотр: провал без текста — запасной", textFor(sys, "fail", "Ничего.") === "Ничего.");
+  check("осмотр: пустой текст зоны — запасной, а не пустая плашка", textFor({}, "plain", "Ничего.") === "Ничего.");
   check("осмотр: провал с текстом", textFor({ ...sys, textFail: "Обычная кровать." }, "fail", "x") === "Обычная кровать.");
 
   // Адресаты
@@ -94,7 +133,7 @@ export async function runInspectTests(check) {
   const fr = flat(ru).sort().join(), fe = flat(en).sort().join();
   check("осмотр: переводы ru и en совпадают", fr === fe);
   const used = new Set();
-  for (const f of ["inspect/scripts/main.mjs", "inspect/scripts/manager.mjs"]) {
+  for (const f of ["inspect/scripts/main.mjs", "inspect/scripts/manager.mjs", "inspect/scripts/editor.mjs", "inspect/scripts/migrate.mjs"]) {
     const src = readFileSync(join(root, f), "utf8");
     for (const m of src.matchAll(/\bLF?\("([A-Za-z.]+)"/g)) used.add(`BURNINSPECT.${m[1]}`);
   }
@@ -119,8 +158,18 @@ export async function runInspectTests(check) {
   check("осмотр: скрипт осмотра в манифесте", man.esmodules.includes("inspect/scripts/main.mjs"));
   check("осмотр: картинка лупы на месте", existsSync(join(root, "inspect/assets/magnifier.svg")));
 
+  // Утечки: показ и запрос уходят только адресатам, заметка ГМа не идёт в чат
+  const mainSrc = readFileSync(join(root, "inspect/scripts/main.mjs"), "utf8");
+  const emits = [...mainSrc.matchAll(/game\.socket\.emit\(SOCKET,[^;]*;/g)].map((m) => m[0]);
+  check("осмотр: каждый emit с recipients", emits.length >= 3 && emits.every((e) => e.includes("recipients")), emits.filter((e) => !e.includes("recipients")).join(" | "));
+  const chatBlocks = [...mainSrc.matchAll(/ChatMessage\.create\(\{[\s\S]*?\}\);/g)].map((m) => m[0]);
+  check("осмотр: заметка ГМа не попадает в чат", chatBlocks.length > 0 && chatBlocks.every((c) => !/gmNote/.test(c)));
+  const storeSrc = readFileSync(join(root, "inspect/scripts/store.mjs"), "utf8");
+  check("осмотр: хранилище пишет только ГМ", /if \(!game\.user\.isGM\) throw/.test(storeSrc) && /if \(!game\.user\.isGM\) return state/.test(storeSrc));
+
   // Синтаксис модулей браузера
-  for (const f of ["inspect/scripts/main.mjs", "inspect/scripts/manager.mjs", "inspect/scripts/logic.mjs"]) {
+  for (const f of ["inspect/scripts/main.mjs", "inspect/scripts/manager.mjs", "inspect/scripts/logic.mjs",
+    "inspect/scripts/store.mjs", "inspect/scripts/editor.mjs", "inspect/scripts/migrate.mjs"]) {
     let ok = true, err = "";
     try { execFileSync(process.execPath, ["--check", join(root, f)], { stdio: "pipe" }); }
     catch (e) { ok = false; err = String(e.stderr ?? e).split("\n").slice(0, 4).join(" "); }

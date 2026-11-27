@@ -17,21 +17,32 @@ export const CHECK = Object.freeze({ NONE: "none", ROLL: "roll", PASSIVE: "passi
 /** Итог осмотра. */
 export const OUTCOME = Object.freeze({ PLAIN: "plain", SUCCESS: "success", FAIL: "fail" });
 
-/** Значения system по умолчанию — они же описаны в inspect/FORMAT.md. */
+/**
+ * Значения system по умолчанию — публичная часть зоны, она лежит в регионе
+ * и уходит всем клиентам. Тексты сюда не входят (см. SECRET_DEFAULTS).
+ * Описано в inspect/FORMAT.md.
+ */
 export const DEFAULTS = Object.freeze({
+  textKey: "",
   title: "",
-  text: "",
   checkMode: CHECK.NONE,
   skill: "prc",
   dc: 12,
-  textFail: "",
   visibility: VISIBILITY.SELF,
   range: 0,
   repeat: REPEAT.REMEMBER,
-  gmNote: "",
   sound: "",
   duration: 0
 });
+
+/** Секретная часть зоны — живёт только в файле хранилища, игрокам не уходит. */
+export const SECRET_DEFAULTS = Object.freeze({ text: "", textFail: "", gmNote: "" });
+export const SECRET_FIELDS = Object.freeze(Object.keys(SECRET_DEFAULTS));
+
+/** Папка хранилища текстов в источнике «data». Список файлов в ней сервер
+ * отдаёт только пользователям с правом FILES_BROWSE. */
+export const STORE_DIR = "burn-inspect-secret";
+export const STORE_VERSION = 1;
 
 const pickEnum = (v, en, d) => (Object.values(en).includes(v) ? v : d);
 const num = (v, d, min = 0) => {
@@ -39,27 +50,102 @@ const num = (v, d, min = 0) => {
   return Number.isFinite(n) ? Math.max(min, n) : d;
 };
 const str = (v) => (typeof v === "string" ? v : v == null ? "" : String(v));
+const KEY_RE = /^[A-Za-z0-9_-]{8,64}$/;
 
 /**
  * Приводит произвольный объект (выгрузка Картографа, старая версия, ручной
- * JSON) к полному набору полей с допустимыми значениями.
+ * JSON) к полному набору публичных полей с допустимыми значениями.
+ * Тексты (text, textFail, gmNote) отбрасываются.
  */
 export function normalizeSystem(src = {}) {
   const s = src ?? {};
+  const key = str(s.textKey).trim();
   return {
+    textKey: KEY_RE.test(key) ? key : "",
     title: str(s.title).trim(),
-    text: str(s.text),
     checkMode: pickEnum(s.checkMode, CHECK, DEFAULTS.checkMode),
     skill: str(s.skill).trim() || DEFAULTS.skill,
     dc: Math.round(num(s.dc, DEFAULTS.dc, 0)),
-    textFail: str(s.textFail),
     visibility: pickEnum(s.visibility, VISIBILITY, DEFAULTS.visibility),
     range: num(s.range, DEFAULTS.range, 0),
     repeat: pickEnum(s.repeat, REPEAT, DEFAULTS.repeat),
-    gmNote: str(s.gmNote),
     sound: str(s.sound).trim(),
     duration: num(s.duration, DEFAULTS.duration, 0)
   };
+}
+
+/** Секретные тексты зоны с допустимыми значениями. */
+export function normalizeSecret(src = {}) {
+  const s = src ?? {};
+  return { text: str(s.text), textFail: str(s.textFail), gmNote: str(s.gmNote) };
+}
+
+/** Есть ли в объекте хоть один непустой текст (для перевода зон 1.3.0). */
+export function hasSecret(src) {
+  return !!src && SECRET_FIELDS.some((f) => typeof src[f] === "string" && src[f].trim());
+}
+
+/** Случайная строка из hex-цифр: bytes байт энтропии. */
+export function randomHex(bytes = 16) {
+  const a = new Uint8Array(bytes);
+  globalThis.crypto.getRandomValues(a);
+  return [...a].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/** Ключ текстов зоны (system.textKey): 16 hex = 64 бита, уникален между мирами. */
+export const newTextKey = () => randomHex(8);
+export const isTextKey = (k) => typeof k === "string" && KEY_RE.test(k);
+
+/** Имя главного файла мира: префикс по id мира + 128 бит случайности. */
+export const worldFilePrefix = (worldId) => `world-${String(worldId).replace(/[^A-Za-z0-9_-]/g, "_")}-`;
+export const newWorldFileName = (worldId) => `${worldFilePrefix(worldId)}${randomHex(16)}.json`;
+
+/** Разбирает содержимое файла хранилища; мусор — пустой набор. */
+export function parseStoreFile(json) {
+  let data = json;
+  if (typeof json === "string") {
+    try { data = JSON.parse(json); } catch { return {}; }
+  }
+  const zones = data && typeof data === "object" ? data.zones : null;
+  if (!zones || typeof zones !== "object") return {};
+  const out = {};
+  for (const [k, v] of Object.entries(zones)) {
+    if (!isTextKey(k) || !v || typeof v !== "object") continue;
+    out[k] = normalizeSecret(v);
+  }
+  return out;
+}
+
+/**
+ * Сводит файлы хранилища в один набор. Файлы мира (по префиксу) главнее
+ * остальных (выгрузки Картографа и пр.); среди равных — по имени.
+ * @param {{name: string, data: object|string}[]} files
+ * @param {string} worldId
+ * @returns {{zones: Record<string, object>, mainFile: string|null}}
+ */
+export function mergeStore(files, worldId) {
+  const prefix = worldFilePrefix(worldId);
+  const list = [...files].sort((a, b) => {
+    const am = a.name.startsWith(prefix), bm = b.name.startsWith(prefix);
+    if (am !== bm) return am ? 1 : -1;
+    return a.name.localeCompare(b.name);
+  });
+  const zones = {};
+  let mainFile = null;
+  for (const f of list) {
+    Object.assign(zones, parseStoreFile(f.data));
+    if (f.name.startsWith(prefix)) mainFile = f.name;
+  }
+  return { zones, mainFile };
+}
+
+/** Содержимое главного файла мира: только ключи, которые есть в мире. */
+export function buildStoreFile(zones, usedKeys) {
+  const out = {};
+  for (const k of [...usedKeys].sort()) {
+    if (zones[k] && isTextKey(k)) out[k] = normalizeSecret(zones[k]);
+  }
+  return { version: STORE_VERSION, zones: out };
 }
 
 /** Ключ памяти осмотра: персонаж, иначе токен, иначе пользователь. */
@@ -96,11 +182,12 @@ export function resolveOutcome(sys, res = {}) {
   return Number(value) >= s.dc ? OUTCOME.SUCCESS : OUTCOME.FAIL;
 }
 
-/** Текст под итог. Пустой текст провала заменяется fallbackFail. */
-export function textFor(sys, outcome, fallbackFail = "") {
-  const s = normalizeSystem(sys);
-  if (outcome === OUTCOME.FAIL) return s.textFail.trim() ? s.textFail : fallbackFail;
-  return s.text;
+/** Текст под итог (по секретной части зоны). Пустой текст заменяется fallback
+ * («Ничего примечательного»), чтобы плашка не вышла пустой. */
+export function textFor(secret, outcome, fallback = "") {
+  const s = normalizeSecret(secret);
+  const t = outcome === OUTCOME.FAIL ? s.textFail : s.text;
+  return t.trim() ? t : fallback;
 }
 
 /**

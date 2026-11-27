@@ -202,3 +202,39 @@
 .burn-inspect-manager .bim-actions { display: flex; gap: 8px; font-size: 14px; }
 .burn-inspect-manager .bim-actions a { cursor: pointer; }
 .burn-inspect-manager .bim-foot { display: flex; justify-content: flex-end; }
+
+/* Заметка ГМа при осмотре — только на экране ГМа */
+.burn-inspect-gmnote {
+  position: absolute;
+  right: 330px;
+  bottom: 20px;
+  width: 320px;
+  padding: 10px 14px;
+  pointer-events: auto;
+  font-family: "Alegreya", "Palatino Linotype", serif;
+  font-size: 15px;
+  color: #efe6ff;
+  background: rgba(40, 24, 60, 0.94);
+  border: 1px solid rgba(170, 130, 220, 0.6);
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
+}
+.burn-inspect-gmnote .bip-close { position: absolute; top: 2px; right: 4px; background: none; border: 0; color: #cbb6ef; font-size: 18px; width: 22px; height: 22px; padding: 0; cursor: pointer; box-shadow: none; }
+.burn-inspect-gmnote .bign-head { font-weight: 700; margin: 0 18px 4px 0; }
+.burn-inspect-gmnote .bign-body p { margin: 0 0 0.3em; }
+
+/* Редактор зоны */
+.burn-inspect-editor .window-content { overflow-y: auto; }
+.burn-inspect-editor .bie-hint { margin: 0 0 6px; font-size: 12px; opacity: 0.8; }
+.burn-inspect-editor fieldset.bie-gm { border-color: rgba(170, 130, 220, 0.6); }
+.burn-inspect-editor prose-mirror { min-height: 110px; }
+.burn-inspect-editor .form-footer { margin-top: 8px; }
+.burn-inspect-open-editor { width: 100%; margin-bottom: 8px; }
+.burn-inspect-manager .bim-warn {
+  margin: 0;
+  padding: 6px 8px;
+  font-size: 12px;
+  background: rgba(220, 120, 40, 0.15);
+  border: 1px solid rgba(220, 120, 40, 0.5);
+  border-radius: 4px;
+}

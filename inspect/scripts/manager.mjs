@@ -4,7 +4,9 @@
  * осмотр к уже нарисованным регионам.
  */
 
-import { MODULE_ID, BEHAVIOR_TYPE, FLAG_SEEN, CHECK, DEFAULTS, normalizeSystem } from "./logic.mjs";
+import { MODULE_ID, BEHAVIOR_TYPE, FLAG_SEEN, CHECK, DEFAULTS, STORE_DIR, normalizeSystem, newTextKey } from "./logic.mjs";
+import { loadStore, getSecret } from "./store.mjs";
+import { openInspectEditor } from "./editor.mjs";
 
 const { ApplicationV2 } = foundry.applications.api;
 const L = (k) => game.i18n.localize(`BURNINSPECT.${k}`);
@@ -30,7 +32,7 @@ function stripHtml(html) {
 }
 
 function behaviorData(title = "") {
-  return { type: BEHAVIOR_TYPE, name: L("BehaviorName"), system: { ...DEFAULTS, title } };
+  return { type: BEHAVIOR_TYPE, name: L("BehaviorName"), system: { ...DEFAULTS, title, textKey: newTextKey() } };
 }
 
 function levelsForNew() {
@@ -48,7 +50,8 @@ async function createZone(shape, title, label = "") {
     visibility: CONST.REGION_VISIBILITY.LAYER,
     behaviors: [behaviorData(title)]
   }]);
-  region?.behaviors.contents[0]?.sheet?.render(true);
+  const b = region?.behaviors.contents[0];
+  if (b) openInspectEditor(b);
   return region;
 }
 
@@ -115,18 +118,20 @@ class InspectManager extends ApplicationV2 {
   #hooks = [];
 
   async _renderHTML() {
+    await loadStore();
     const zones = zonesOnScene();
     const scene = canvas.scene;
     const rows = zones.map(({ region, behavior }) => {
       const s = normalizeSystem(behavior.system);
+      const sec = getSecret(s.textKey);
       const seen = Object.keys(behavior.getFlag(MODULE_ID, FLAG_SEEN) ?? {}).length;
       const badges = [];
       if (s.checkMode !== CHECK.NONE) badges.push(`${s.checkMode === CHECK.PASSIVE ? L("PassiveShort") : "d20"} ${L("DC")} ${s.dc}`);
       badges.push(L(`VisibilityShort.${s.visibility}`));
       badges.push(L(`RepeatShort.${s.repeat}`));
       if (s.range) badges.push(`≤ ${s.range} ${esc(scene.grid.units || "")}`);
-      if (s.gmNote.trim()) badges.push(`<i class="fa-solid fa-user-secret"></i>`);
-      const snippet = stripHtml(s.text).slice(0, 90) || `<em>${L("EmptyText")}</em>`;
+      if (sec.gmNote.trim()) badges.push(`<i class="fa-solid fa-user-secret"></i>`);
+      const snippet = stripHtml(sec.text).slice(0, 90) || `<em>${L("EmptyText")}</em>`;
       return `<li class="bim-row ${behavior.disabled ? "off" : ""}" data-region="${region.id}" data-behavior="${behavior.id}">
         <div class="bim-main">
           <div class="bim-title">${esc(s.title || region.name)}</div>
@@ -144,6 +149,11 @@ class InspectManager extends ApplicationV2 {
     }).join("");
 
     const controlled = canvas.regions?.controlled?.length ?? 0;
+    // Кто из не-ГМов может смотреть файлы — тот найдёт и файл текстов.
+    const browsers = game.users.filter((u) => !u.isGM && u.can("FILES_BROWSE")).map((u) => esc(u.name));
+    const warn = browsers.length
+      ? `<p class="bim-warn"><i class="fa-solid fa-triangle-exclamation"></i> ${LF("BrowseWarn", { users: browsers.join(", "), dir: STORE_DIR })}</p>`
+      : "";
     return `
       <div class="bim-tools">
         <button type="button" data-tool="tile"><i class="fa-solid fa-cubes"></i> ${L("ByTile")}</button>
@@ -151,6 +161,7 @@ class InspectManager extends ApplicationV2 {
         <button type="button" data-tool="regions" ${controlled ? "" : "disabled"} data-tooltip="${L("ToRegionsHint")}"><i class="fa-solid fa-draw-polygon"></i> ${L("ToRegions")}${controlled ? ` (${controlled})` : ""}</button>
       </div>
       <p class="bim-hint">${L("ManagerHint")}</p>
+      ${warn}
       ${scene ? "" : `<p class="bim-empty">${L("NoScene")}</p>`}
       ${zones.length ? `<ul class="bim-list">${rows}</ul>` : (scene ? `<p class="bim-empty">${L("NoZones")}</p>` : "")}
       ${zones.length ? `<div class="bim-foot"><button type="button" data-tool="resetAll"><i class="fa-solid fa-rotate-left"></i> ${L("ResetAll")}</button></div>` : ""}`;
@@ -200,7 +211,7 @@ class InspectManager extends ApplicationV2 {
       for (const r of regions) {
         if (r.document.behaviors.some((b) => b.type === BEHAVIOR_TYPE)) continue;
         const [b] = await r.document.createEmbeddedDocuments("RegionBehavior", [behaviorData("")]);
-        b?.sheet?.render(true);
+        if (b) openInspectEditor(b);
       }
     } else if (tool === "resetAll") {
       const ok = await foundry.applications.api.DialogV2.confirm({
@@ -214,7 +225,7 @@ class InspectManager extends ApplicationV2 {
     const region = canvas.scene?.regions.get(regionId);
     const behavior = region?.behaviors.get(behaviorId);
     if (!behavior) return;
-    if (act === "edit") return behavior.sheet.render(true);
+    if (act === "edit") return openInspectEditor(behavior);
     if (act === "toggle") return behavior.update({ disabled: !behavior.disabled });
     if (act === "reset") return game.burnCinema.inspect.resetInspectMemory(behavior);
     if (act === "pan") {

@@ -1,37 +1,95 @@
 {
   "TYPES": {
     "RegionBehavior": {
-      "burn-cinema": { "inspect": "🔥 Inspect Item" }
+      "burn-cinema": {
+        "inspect": "🔥 Inspect Item"
+      }
     }
   },
   "BURNINSPECT": {
     "Behavior": {
       "FIELDS": {
-        "title": { "label": "Item name", "hint": "Shown on hover and as the plaque header. May be empty." },
-        "text": { "label": "Inspection text", "hint": "What the character sees. With a skill check — the success text." },
-        "checkMode": { "label": "Check", "hint": "Roll — the player rolls the skill on first inspection; passive — the passive skill score is compared, no roll." },
-        "skill": { "label": "Skill" },
-        "dc": { "label": "Difficulty (DC)" },
-        "textFail": { "label": "Failure text", "hint": "Empty — \"Nothing of note.\"" },
-        "visibility": { "label": "Show to" },
-        "range": { "label": "Range", "hint": "In scene units from the token to the zone edge. 0 — unlimited." },
-        "repeat": { "label": "Repeat inspection" },
-        "gmNote": { "label": "GM note", "hint": "Hidden from players. Whispered to the GM when someone inspects the zone." },
-        "sound": { "label": "Sound", "hint": "Plays for whoever sees the plaque." },
-        "duration": { "label": "Display time, s", "hint": "0 — the plaque stays until closed or clicked away." }
+        "title": {
+          "label": "Item name",
+          "hint": "Shown on hover and as the plaque header. May be empty."
+        },
+        "text": {
+          "label": "Inspection text",
+          "hint": "What the character sees. With a skill check — the success text."
+        },
+        "checkMode": {
+          "label": "Check",
+          "hint": "Roll — the player rolls the skill on first inspection; passive — the passive skill score is compared, no roll."
+        },
+        "skill": {
+          "label": "Skill"
+        },
+        "dc": {
+          "label": "Difficulty (DC)"
+        },
+        "textFail": {
+          "label": "Failure text",
+          "hint": "Empty — \"Nothing of note.\""
+        },
+        "visibility": {
+          "label": "Show to"
+        },
+        "range": {
+          "label": "Range",
+          "hint": "In scene units from the token to the zone edge. 0 — unlimited."
+        },
+        "repeat": {
+          "label": "Repeat inspection"
+        },
+        "gmNote": {
+          "label": "GM note",
+          "hint": "Hidden from players. Whispered to the GM when someone inspects the zone."
+        },
+        "sound": {
+          "label": "Sound",
+          "hint": "Plays for whoever sees the plaque."
+        },
+        "duration": {
+          "label": "Display time, s",
+          "hint": "0 — the plaque stays until closed or clicked away."
+        },
+        "textKey": {
+          "label": "Text key",
+          "hint": "Links the zone to its texts in the GM storage."
+        }
       }
     },
-    "Check": { "none": "No check", "roll": "Skill roll", "passive": "Passive check" },
-    "Visibility": { "self": "Only the inspector", "all": "All players", "chat": "Inspector and a chat entry" },
-    "VisibilityShort": { "self": "private", "all": "all", "chat": "chat" },
-    "Repeat": { "remember": "Remember the result (repeat without rolling)", "always": "Fresh every time", "once": "Once, then the zone goes dark" },
-    "RepeatShort": { "remember": "remembers", "always": "fresh", "once": "once" },
+    "Check": {
+      "none": "No check",
+      "roll": "Skill roll",
+      "passive": "Passive check"
+    },
+    "Visibility": {
+      "self": "Only the inspector",
+      "all": "All players",
+      "chat": "Inspector and a chat entry"
+    },
+    "VisibilityShort": {
+      "self": "private",
+      "all": "all",
+      "chat": "chat"
+    },
+    "Repeat": {
+      "remember": "Remember the result (repeat without rolling)",
+      "always": "Fresh every time",
+      "once": "Once, then the zone goes dark"
+    },
+    "RepeatShort": {
+      "remember": "remembers",
+      "always": "fresh",
+      "once": "once"
+    },
     "BehaviorName": "🔥 Inspect",
     "Thing": "Item",
     "DefaultFail": "Nothing of note.",
     "TooFar": "You can't make it out from here — move closer.",
     "NeedToken": "Select your character first.",
-    "NoGM": "No GM in the game: the inspection won't be remembered.",
+    "NoGM": "No GM in the game — nothing can be inspected.",
     "Error": "Inspect: error (see console)",
     "RollFlavor": "Inspect \"{title}\": {skill}",
     "Passive": "passive",
@@ -50,7 +108,10 @@
     "Close": "Close",
     "ReportHead": "{who} ({user}) inspects \"{title}\"",
     "Settings": {
-      "GmReport": { "Name": "Inspect: GM report in chat", "Hint": "When a player inspects a zone, the GM gets a whisper with who, what and the result, plus the GM note." }
+      "GmReport": {
+        "Name": "Inspect: GM report in chat",
+        "Hint": "When a player inspects a zone, the GM gets a whisper with who, what and the result, plus the GM note."
+      }
     },
     "ByTile": "From tile",
     "ByPoint": "Cell at point",
@@ -73,6 +134,19 @@
     "PickTile": "Click the item's tile (Esc to cancel)",
     "PickPoint": "Click where to place the zone (Esc to cancel)",
     "PickCancelled": "Selection cancelled",
-    "NoTileHere": "No tile here"
+    "NoTileHere": "No tile here",
+    "Migrated": "Inspect: texts of {n} zones moved from regions to hidden storage.",
+    "StoreError": "Inspect: could not read or write the text file (see console).",
+    "NoteHead": "{who} — \"{title}\"",
+    "BrowseWarn": "\"Browse files\" permission is granted to: {users}. They can find inspection texts in the {dir} folder. Revoke it in Permission Configuration or accept this.",
+    "Editor": {
+      "Item": "Item",
+      "Check": "Check",
+      "Show": "Display",
+      "Save": "Save",
+      "Saved": "Inspection saved",
+      "Open": "Inspection texts and settings",
+      "SecretHint": "Texts and the note are kept in a separate GM file and reach a player only when they inspect. They are not in the scene data."
+    }
   }
 }

@@ -5,11 +5,17 @@
  * курсор на зону: курсор становится лупой, контур подсвечивается. По клику
  * над зоной появляется пергаментная плашка с текстом ГМа.
  *
+ * Тексты зоны (text, textFail, gmNote) в регионе НЕ лежат: они в файле
+ * хранилища у ГМа (store.mjs), в регионе только system.textKey. Сервер
+ * Foundry отдаёт игрокам весь мир без фильтра, поэтому тексты уходят
+ * игроку только в момент осмотра и только адресату.
+ *
  * Поток клика у игрока:
  *   клиент игрока: хит-тест по форме региона → дистанция → (бросок навыка) →
- *   сокет «inspect.request» → активный ГМ: итог, память зоны, отчёт ГМу →
- *   сокет «inspect.show» адресатам → плашка над зоной.
- * Без ГМа в игре плашка показывается локально и осмотр не запоминается.
+ *   сокет «inspect.request» только активному ГМу → ГМ (по id отправителя от
+ *   сервера): дистанция, «один раз», итог, память, отчёт → сокет
+ *   «inspect.show» с recipients только адресатам → плашка над зоной.
+ * Без ГМа в игре осмотр невозможен: игрок видит объяснение.
  *
  * Формат данных для внешних инструментов (Картограф) — inspect/FORMAT.md.
  */
@@ -20,6 +26,9 @@ import {
   distToPolygons, pxToUnits, inRange, placePlaque
 } from "./logic.mjs";
 import { openInspectManager } from "./manager.mjs";
+import { loadStore, getSecret } from "./store.mjs";
+import { openInspectEditor } from "./editor.mjs";
+import { migrateLegacyTexts } from "./migrate.mjs";
 
 const SOCKET = `module.${MODULE_ID}`;
 const L = (k) => game.i18n.localize(`BURNINSPECT.${k}`);
@@ -49,16 +58,14 @@ function defineBehaviorType() {
 
     static defineSchema() {
       return {
+        textKey: new fields.StringField({ required: true, blank: true, initial: DEFAULTS.textKey }),
         title: new fields.StringField({ required: true, blank: true, initial: DEFAULTS.title }),
-        text: new fields.HTMLField({ required: true, blank: true, initial: DEFAULTS.text }),
         checkMode: new fields.StringField({ required: true, initial: DEFAULTS.checkMode, choices: choices(CHECK, "Check") }),
         skill: new fields.StringField({ required: true, initial: DEFAULTS.skill, choices: skillChoices }),
         dc: new fields.NumberField({ required: true, nullable: false, integer: true, min: 0, max: 40, initial: DEFAULTS.dc }),
-        textFail: new fields.HTMLField({ required: true, blank: true, initial: DEFAULTS.textFail }),
         visibility: new fields.StringField({ required: true, initial: DEFAULTS.visibility, choices: choices(VISIBILITY, "Visibility") }),
         range: new fields.NumberField({ required: true, nullable: false, min: 0, initial: DEFAULTS.range }),
         repeat: new fields.StringField({ required: true, initial: DEFAULTS.repeat, choices: choices(REPEAT, "Repeat") }),
-        gmNote: new fields.HTMLField({ required: true, blank: true, initial: DEFAULTS.gmNote }),
         sound: new fields.FilePathField({ required: false, blank: true, categories: ["AUDIO"], initial: DEFAULTS.sound }),
         duration: new fields.NumberField({ required: true, nullable: false, min: 0, initial: DEFAULTS.duration })
       };
@@ -294,6 +301,8 @@ async function inspect(zone, point, ev) {
     if (!inRange(sys, dist)) return showNotice(zone, L("TooFar"));
   }
 
+  if (!game.users.activeGM) return showNotice(zone, L("NoGM"));
+
   const key = keyFor(token);
   const plan = planInspection(sys, zoneSeen(behavior, key));
   if (!plan.allowed) return;
@@ -315,38 +324,34 @@ async function inspect(zone, point, ev) {
   const req = {
     type: "inspect.request",
     behaviorUuid: behavior.uuid,
-    userId: game.user.id,
     tokenId: token?.id ?? null,
     total
   };
 
-  if (game.users.activeGM) {
-    game.socket.emit(SOCKET, req);
-    return;
-  }
-  // ГМа нет: показываем сами, без памяти.
-  ui.notifications.warn(L("NoGM"));
-  const res = resolveRequest(req, { local: true });
-  if (res) displayShow(res.show);
+  // ГМа могло не стать, пока игрок кидал кость.
+  const gm = game.users.activeGM;
+  if (!gm) return showNotice(zone, L("NoGM"));
+  game.socket.emit(SOCKET, req, { recipients: [gm.id] });
 }
 
 /** Пакет для плашки у ГМа: все тексты сразу. */
 function gmPreview({ region, behavior }) {
   const sys = normalizeSystem(behavior.system);
+  const sec = getSecret(sys.textKey);
   const parts = [];
   if (sys.checkMode !== CHECK.NONE) {
     const how = sys.checkMode === CHECK.PASSIVE ? L("Passive") : L("Roll");
     parts.push({ cls: "bip-gm-check", html: `${skillLabel(sys.skill)} · ${how} · ${L("DC")} ${sys.dc}` });
     parts.push({ cls: "bip-gm-label", html: L("OnSuccess") });
-    parts.push({ cls: "bip-text", html: sys.text });
+    parts.push({ cls: "bip-text", html: sec.text || `<em>${L("EmptyText")}</em>` });
     parts.push({ cls: "bip-gm-label", html: L("OnFail") });
-    parts.push({ cls: "bip-text", html: sys.textFail || L("DefaultFail") });
+    parts.push({ cls: "bip-text", html: sec.textFail || L("DefaultFail") });
   } else {
-    parts.push({ cls: "bip-text", html: sys.text });
+    parts.push({ cls: "bip-text", html: sec.text || `<em>${L("EmptyText")}</em>` });
   }
-  if (sys.gmNote.trim()) {
+  if (sec.gmNote.trim()) {
     parts.push({ cls: "bip-gm-label", html: L("GmOnly") });
-    parts.push({ cls: "bip-gm-note", html: sys.gmNote });
+    parts.push({ cls: "bip-gm-note", html: sec.gmNote });
   }
   return {
     sceneId: region.parent.id, regionId: region.id, behaviorId: behavior.id,
@@ -357,20 +362,34 @@ function gmPreview({ region, behavior }) {
 /* ═══════════════════════════ Сторона ГМа ══════════════════════════════════ */
 
 /**
- * Разбирает запрос игрока. Возвращает пакет показа, адресатов и обновление
- * памяти. local — разбор у самого игрока без ГМа (память не пишется).
+ * Разбирает запрос игрока на клиенте ГМа. Отправителя называет сервер
+ * (третий аргумент сокета), полю из пакета не верим. Дистанцию и «один раз»
+ * ГМ проверяет сам. Возвращает пакет показа, адресатов и обновление памяти.
  */
-function resolveRequest(req, { local = false } = {}) {
-  const behavior = fromUuidSync(req.behaviorUuid);
+function resolveRequest(req, senderId) {
+  const behavior = typeof req?.behaviorUuid === "string" ? fromUuidSync(req.behaviorUuid) : null;
   if (!behavior || behavior.type !== BEHAVIOR_TYPE || behavior.disabled) return null;
   const region = behavior.parent;
   const scene = region?.parent;
   const sys = normalizeSystem(behavior.system);
-  const user = game.users.get(req.userId);
-  if (!user) return null;
+  const user = game.users.get(senderId);
+  if (!user || user.isGM) return null;
   const tokenDoc = req.tokenId ? scene?.tokens.get(req.tokenId) : null;
+  if (req.tokenId && !tokenDoc) return null;
   if (tokenDoc && !tokenDoc.testUserPermission(user, "OWNER")) return null;
   const actor = tokenDoc?.actor ?? user.character ?? null;
+
+  if (sys.range) {
+    if (!tokenDoc) return { deny: "NeedToken", user, scene, region, behavior };
+    const c = tokenDoc.object?.center ?? {
+      x: tokenDoc.x + (tokenDoc.width * scene.grid.size) / 2,
+      y: tokenDoc.y + (tokenDoc.height * scene.grid.size) / 2
+    };
+    const px = region.polygonTree?.testPoint?.(c) ? 0 : distToPolygons(c.x, c.y, regionPolys(region));
+    if (!inRange(sys, pxToUnits(px, scene.grid.size, scene.grid.distance))) {
+      return { deny: "TooFar", user, scene, region, behavior };
+    }
+  }
 
   const key = memoryKey({ actorId: actor?.id, tokenId: tokenDoc?.id, userId: user.id });
   const seen = zoneSeen(behavior, key);
@@ -378,8 +397,10 @@ function resolveRequest(req, { local = false } = {}) {
   if (!plan.allowed) return null;
 
   const passive = actor?.system?.skills?.[sys.skill]?.passive;
-  const outcome = plan.reuse ?? resolveOutcome(sys, { total: req.total, passive });
-  const html = textFor(sys, outcome, L("DefaultFail"));
+  const total = Number.isFinite(Number(req.total)) ? Number(req.total) : null;
+  const outcome = plan.reuse ?? resolveOutcome(sys, { total, passive });
+  const secret = getSecret(sys.textKey);
+  const html = textFor(secret, outcome, L("DefaultFail"));
 
   let checkLine = "";
   if (sys.checkMode !== CHECK.NONE) {
@@ -397,20 +418,32 @@ function resolveRequest(req, { local = false } = {}) {
     outcome, sound: sys.sound, duration: sys.duration
   };
 
-  const memory = (!local && sys.repeat !== REPEAT.ALWAYS && !plan.reuse)
+  const memory = (sys.repeat !== REPEAT.ALWAYS && !plan.reuse)
     ? { [`flags.${MODULE_ID}.${FLAG_SEEN}.${key}`]: { o: outcome, u: user.id, t: Date.now() } }
     : null;
 
-  return { show, users, chat, memory, behavior, sys, user, tokenDoc, actor, outcome, req, plan };
+  return { show, users, chat, memory, behavior, sys, secret, user, tokenDoc, actor, outcome, req, total, plan };
 }
 
-async function handleRequest(req) {
+async function handleRequest(req, senderId) {
   if (game.users.activeGM?.id !== game.user.id) return;
-  const res = resolveRequest(req);
+  await loadStore();
+  const res = resolveRequest(req, senderId);
   if (!res) return;
-  const { show, users, chat, memory, behavior, sys, user, tokenDoc, actor, outcome } = res;
+  if (res.deny) {
+    // Отказ — только объяснение, без текста зоны.
+    const notice = {
+      sceneId: res.scene.id, regionId: res.region.id, behaviorId: res.behavior.id,
+      title: "", parts: [{ cls: "bip-notice", html: res.deny }], duration: 3, notice: true, i18n: true
+    };
+    game.socket.emit(SOCKET, { type: "inspect.show", data: notice }, { recipients: [res.user.id] });
+    return;
+  }
+  const { show, users, chat, memory, behavior, sys, secret, user, tokenDoc, actor, outcome } = res;
 
-  game.socket.emit(SOCKET, { type: "inspect.show", users, data: show });
+  // Текст уходит только адресатам: сервер шлёт пакет лишь их сокетам.
+  const others = users.filter((id) => id !== game.user.id);
+  if (others.length) game.socket.emit(SOCKET, { type: "inspect.show", data: show }, { recipients: others });
   if (users.includes(game.user.id)) displayShow(show);
 
   if (memory) await behavior.update(memory);
@@ -424,16 +457,19 @@ async function handleRequest(req) {
     });
   }
 
+  // Заметка ГМа — только локально у ГМа: шёпот в чате хранится в мире и
+  // уходит всем клиентам, прячет его лишь интерфейс.
+  if (secret.gmNote.trim()) showGmNote(who, sys, secret.gmNote);
+
   if (game.settings.get(MODULE_ID, "inspectGmReport")) {
     const lines = [
       `<div class="bic-title"><i class="fa-solid fa-magnifying-glass"></i> ${LF("ReportHead", { who: foundry.utils.escapeHTML(who), user: foundry.utils.escapeHTML(user.name), title: foundry.utils.escapeHTML(sys.title || L("Thing")) })}</div>`
     ];
     if (sys.checkMode !== CHECK.NONE) {
-      const val = sys.checkMode === CHECK.PASSIVE ? actor?.system?.skills?.[sys.skill]?.passive : req.total;
+      const val = sys.checkMode === CHECK.PASSIVE ? actor?.system?.skills?.[sys.skill]?.passive : res.total;
       const res2 = outcome === OUTCOME.SUCCESS ? L("Success") : L("Failure");
       lines.push(`<div>${skillLabel(sys.skill)}: ${res.plan?.reuse ? L("Remembered") : (val ?? "—")} / ${L("DC")} ${sys.dc} — <b>${res2}</b></div>`);
     }
-    if (sys.gmNote.trim()) lines.push(`<div class="bic-note">${await enrich(sys.gmNote)}</div>`);
     await ChatMessage.create({
       whisper: game.users.filter((u) => u.isGM).map((u) => u.id),
       speaker: { alias: "🔥 Осмотр" },
@@ -455,6 +491,9 @@ async function enrich(html) {
 
 function displayShow(data) {
   if (!canvas?.scene || canvas.scene.id !== data.sceneId) return;
+  if (data.i18n) {
+    data = { ...data, parts: (data.parts ?? []).map((p) => ({ ...p, html: foundry.utils.escapeHTML(L(String(p.html))) })) };
+  }
   showPlaque(data);
   if (data.sound) {
     const AH = foundry.audio?.AudioHelper ?? globalThis.AudioHelper;
@@ -511,7 +550,8 @@ async function showPlaque(data) {
   el.addEventListener("pointerdown", (e) => e.stopPropagation());
   el.querySelector('[data-act="all"]')?.addEventListener("click", () => gmShowAll(data));
   el.querySelector('[data-act="edit"]')?.addEventListener("click", () => {
-    region.behaviors.get(data.behaviorId)?.sheet?.render(true);
+    const b = region.behaviors.get(data.behaviorId);
+    if (b) openInspectEditor(b);
   });
 
   overlayRoot().appendChild(el);
@@ -549,27 +589,56 @@ function gmShowAll(preview) {
   const sys = normalizeSystem(behavior.system);
   const show = {
     sceneId: preview.sceneId, regionId: preview.regionId, behaviorId: preview.behaviorId,
-    title: sys.title, parts: [{ cls: "bip-text", html: sys.text }],
+    title: sys.title, parts: [{ cls: "bip-text", html: getSecret(sys.textKey).text }],
     outcome: OUTCOME.PLAIN, sound: sys.sound, duration: sys.duration
   };
   const users = game.users.filter((u) => u.active && !u.isGM).map((u) => u.id);
-  game.socket.emit(SOCKET, { type: "inspect.show", users, data: show });
+  if (users.length) game.socket.emit(SOCKET, { type: "inspect.show", data: show }, { recipients: users });
   ui.notifications.info(LF("ShownAll", { title: sys.title || L("Thing") }));
+}
+
+/** Заметка ГМа при осмотре — карточка только на экране ГМа, в мир не пишется. */
+async function showGmNote(who, sys, note) {
+  const root = overlayRoot();
+  const el = document.createElement("div");
+  el.className = "burn-inspect-gmnote";
+  el.innerHTML = `<button type="button" class="bip-close" aria-label="${L("Close")}">×</button>
+    <div class="bign-head"><i class="fa-solid fa-user-secret"></i> ${foundry.utils.escapeHTML(LF("NoteHead", { who, title: sys.title || L("Thing") }))}</div>
+    <div class="bign-body">${await enrich(note)}</div>`;
+  el.querySelector(".bip-close").addEventListener("click", () => el.remove());
+  root.appendChild(el);
+  setTimeout(() => el.remove(), 30000);
 }
 
 /* ═════════════════════════════ Сокет и хуки ═══════════════════════════════ */
 
-function onSocket(msg) {
+/**
+ * Сокет модуля. Третий аргумент — id отправителя, его подставляет сервер
+ * (handleCustomSocket в dist/server/sockets.mjs), подделать его клиент не может.
+ * Пакеты с recipients сервер шлёт только сокетам адресатов.
+ */
+function onSocket(msg, senderId) {
   if (!msg?.type?.startsWith?.("inspect.")) return;
-  if (msg.type === "inspect.request") return void handleRequest(msg).catch((e) => console.error(`${MODULE_ID} | осмотр (ГМ)`, e));
-  if (msg.type === "inspect.show" && (msg.users ?? []).includes(game.user.id)) displayShow(msg.data);
+  if (msg.type === "inspect.request") {
+    if (!game.user.isGM) return;
+    return void handleRequest(msg, senderId).catch((e) => console.error(`${MODULE_ID} | осмотр (ГМ)`, e));
+  }
+  if (msg.type === "inspect.show") {
+    const from = game.users.get(senderId);
+    if (!from?.isGM) return; // показ присылает только ГМ
+    return displayShow(msg.data);
+  }
+  if (msg.type === "inspect.storeChanged" && game.user.isGM) {
+    return void loadStore({ force: true }).catch((e) => console.error(`${MODULE_ID} | осмотр: хранилище`, e));
+  }
 }
 
 /** Сбросить память осмотров зоны (или всех зон сцены). */
 export async function resetInspectMemory(behavior) {
   if (!game.user.isGM) return;
   const list = behavior ? [behavior] : listZones().map((z) => z.behavior);
-  for (const b of list) await b.update({ [`flags.${MODULE_ID}.-=${FLAG_SEEN}`]: null });
+  const del = foundry.data.operators.ForcedDeletion.create();
+  for (const b of list) await b.update({ [`flags.${MODULE_ID}.${FLAG_SEEN}`]: del });
 }
 
 Hooks.once("init", () => {
@@ -584,14 +653,40 @@ Hooks.once("init", () => {
   });
 });
 
-Hooks.once("ready", () => {
+Hooks.once("ready", async () => {
   game.socket.on(SOCKET, onSocket);
   (game.burnCinema ??= {}).openInspect = () => openInspectManager();
   game.burnCinema.inspect = {
-    listZones, resetInspectMemory, BEHAVIOR_TYPE, normalizeSystem,
+    listZones, resetInspectMemory, BEHAVIOR_TYPE, normalizeSystem, openEditor: openInspectEditor,
     _debug: { hitTest, inspect, ui: ui_, showPlaque, closePlaque }
   };
   if (canvas?.ready) attachCanvas();
+  if (!game.user.isGM) return;
+  try {
+    await loadStore();
+    // Перевод зон 1.3.0 делает один ГМ.
+    if (game.users.activeGM?.id === game.user.id) await migrateLegacyTexts();
+  } catch (e) {
+    console.error(`${MODULE_ID} | осмотр: хранилище текстов`, e);
+    ui.notifications.error(L("StoreError"));
+  }
+});
+
+/* В штатном окне поведения: ключ текстов спрятан, вместо текстов — кнопка
+ * редактора (тексты живут не в регионе). */
+Hooks.on("renderRegionBehaviorConfig", (app, element) => {
+  const doc = app.document;
+  if (doc?.type !== BEHAVIOR_TYPE || !game.user.isGM) return;
+  const root = element instanceof HTMLElement ? element : element?.[0];
+  if (!root || root.querySelector(".burn-inspect-open-editor")) return;
+  root.querySelector('[name="system.textKey"]')?.closest(".form-group")?.remove();
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "burn-inspect-open-editor";
+  btn.innerHTML = `<i class="fa-solid fa-feather"></i> ${L("Editor.Open")}`;
+  btn.addEventListener("click", () => { openInspectEditor(doc); app.close(); });
+  const where = root.querySelector('[name="system.title"]')?.closest("fieldset") ?? root.querySelector(".window-content") ?? root;
+  where.prepend(btn);
 });
 
 Hooks.on("canvasReady", () => {

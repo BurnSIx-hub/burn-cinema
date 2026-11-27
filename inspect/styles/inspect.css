@@ -1,0 +1,204 @@
+/* 🔥 Осмотр предметов — лупа, подпись при наведении, пергаментная плашка */
+
+#board.burn-inspect-cursor {
+  cursor: url("../assets/magnifier.svg") 13 13, zoom-in !important;
+}
+#board.burn-inspect-picking {
+  cursor: crosshair !important;
+}
+
+#burn-inspect-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 70; /* над холстом, под окнами приложений */
+}
+
+/* Подпись предмета при наведении */
+.burn-inspect-hoverlabel {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  padding: 3px 12px 4px;
+  font-family: "Alegreya", "Palatino Linotype", serif;
+  font-size: 17px;
+  font-style: italic;
+  letter-spacing: 0.02em;
+  color: #fbe9c4;
+  background: rgba(24, 16, 8, 0.78);
+  border: 1px solid rgba(243, 199, 107, 0.55);
+  border-radius: 4px;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px #000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+/* Плашка */
+.burn-inspect-plaque {
+  --tail-x: 50%;
+  position: absolute;
+  width: max-content;
+  max-width: min(420px, 80vw);
+  min-width: 180px;
+  padding: 14px 22px 14px;
+  pointer-events: auto;
+  font-family: "Alegreya", "Palatino Linotype", serif;
+  font-size: 18px;
+  line-height: 1.35;
+  color: #2e2114;
+  background:
+    radial-gradient(ellipse at 30% 20%, rgba(255, 250, 235, 0.55), transparent 60%),
+    radial-gradient(ellipse at 80% 90%, rgba(150, 105, 50, 0.18), transparent 65%),
+    linear-gradient(180deg, #f1e2bf 0%, #e6d0a1 100%);
+  border: 1px solid #8a6a3a;
+  border-radius: 6px;
+  box-shadow:
+    inset 0 0 0 3px rgba(241, 226, 191, 0.9),
+    inset 0 0 0 4px rgba(138, 106, 58, 0.55),
+    inset 0 0 22px rgba(120, 80, 30, 0.25),
+    0 8px 24px rgba(0, 0, 0, 0.55);
+  opacity: 0;
+  transform: translateY(6px) scale(0.97);
+  transition: opacity 0.22s ease-out, transform 0.22s ease-out;
+}
+.burn-inspect-plaque.open { opacity: 1; transform: none; }
+.burn-inspect-plaque.closing { opacity: 0; transform: translateY(4px) scale(0.98); }
+
+.burn-inspect-plaque .bip-tail {
+  position: absolute;
+  left: var(--tail-x);
+  bottom: -9px;
+  width: 16px;
+  height: 16px;
+  margin-left: -8px;
+  background: #e6d0a1;
+  border-right: 1px solid #8a6a3a;
+  border-bottom: 1px solid #8a6a3a;
+  transform: rotate(45deg);
+}
+.burn-inspect-plaque.below .bip-tail {
+  bottom: auto;
+  top: -9px;
+  background: #f1e2bf;
+  border: 0;
+  border-left: 1px solid #8a6a3a;
+  border-top: 1px solid #8a6a3a;
+}
+
+.burn-inspect-plaque .bip-close {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  line-height: 20px;
+  font-size: 18px;
+  color: #6b4f2a;
+  background: none;
+  border: 0;
+  box-shadow: none;
+  cursor: pointer;
+}
+.burn-inspect-plaque .bip-close:hover { color: #2e2114; }
+
+.burn-inspect-plaque .bip-title {
+  margin: 0 18px 6px 0;
+  font-size: 15px;
+  font-weight: 700;
+  font-variant: small-caps;
+  letter-spacing: 0.08em;
+  color: #6b3f14;
+  border-bottom: 1px solid rgba(138, 106, 58, 0.45);
+  padding-bottom: 3px;
+}
+.burn-inspect-plaque .bip-text p { margin: 0 0 0.4em; }
+.burn-inspect-plaque .bip-text p:last-child { margin-bottom: 0; }
+.burn-inspect-plaque .bip-text { padding-right: 10px; }
+.burn-inspect-plaque.fail .bip-text { font-style: italic; color: #4a3a2a; }
+.burn-inspect-plaque .bip-foot {
+  margin-top: 8px;
+  font-size: 13px;
+  font-style: italic;
+  text-align: right;
+  color: #7b5c34;
+}
+.burn-inspect-plaque.notice { min-width: 0; padding: 10px 26px 10px 18px; }
+.burn-inspect-plaque .bip-notice { font-style: italic; color: #4a3a2a; }
+
+/* ГМ: предпросмотр всех текстов */
+.burn-inspect-plaque.gm { max-width: min(480px, 85vw); }
+.burn-inspect-plaque .bip-gm-check {
+  font-size: 13px;
+  color: #7b5c34;
+  margin-bottom: 4px;
+}
+.burn-inspect-plaque .bip-gm-label {
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #8a6a3a;
+}
+.burn-inspect-plaque .bip-gm-note {
+  margin-top: 8px;
+  padding: 6px 8px;
+  font-size: 15px;
+  color: #3b2a4a;
+  background: rgba(90, 60, 120, 0.12);
+  border-left: 3px solid rgba(90, 60, 120, 0.5);
+}
+.burn-inspect-plaque .bip-gm-note p { margin: 0; }
+.burn-inspect-plaque .bip-gm-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+.burn-inspect-plaque .bip-gm-actions button {
+  flex: 1;
+  height: 28px;
+  font-family: inherit;
+  font-size: 14px;
+  color: #2e2114;
+  background: rgba(255, 250, 235, 0.6);
+  border: 1px solid #8a6a3a;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.burn-inspect-plaque .bip-gm-actions button:hover { background: rgba(255, 250, 235, 0.95); }
+
+/* Чат */
+.burn-inspect-chat .bic-title { font-weight: 700; margin-bottom: 4px; }
+.burn-inspect-chat .bic-foot { margin-top: 4px; font-size: 0.9em; font-style: italic; opacity: 0.8; }
+.burn-inspect-chat .bic-note { margin-top: 4px; padding-left: 6px; border-left: 3px solid rgba(120, 80, 160, 0.6); }
+
+/* Окно ГМа */
+.burn-inspect-manager .window-content { display: flex; flex-direction: column; gap: 8px; }
+.burn-inspect-manager .bim-tools { display: flex; gap: 6px; }
+.burn-inspect-manager .bim-tools button { flex: 1; white-space: nowrap; }
+.burn-inspect-manager .bim-hint { margin: 0; font-size: 12px; opacity: 0.75; }
+.burn-inspect-manager .bim-empty { margin: 12px 0; text-align: center; opacity: 0.7; }
+.burn-inspect-manager .bim-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; }
+.burn-inspect-manager .bim-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--color-border-light-2, rgba(255, 255, 255, 0.1));
+}
+.burn-inspect-manager .bim-row.off { opacity: 0.5; }
+.burn-inspect-manager .bim-main { flex: 1; min-width: 0; }
+.burn-inspect-manager .bim-title { font-weight: 700; }
+.burn-inspect-manager .bim-snippet { font-size: 12px; opacity: 0.8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.burn-inspect-manager .bim-badges { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+.burn-inspect-manager .bim-badges span {
+  font-size: 11px;
+  padding: 0 5px;
+  border-radius: 3px;
+  background: rgba(243, 199, 107, 0.15);
+  border: 1px solid rgba(243, 199, 107, 0.35);
+}
+.burn-inspect-manager .bim-badges span.seen { background: rgba(120, 200, 140, 0.15); border-color: rgba(120, 200, 140, 0.4); }
+.burn-inspect-manager .bim-actions { display: flex; gap: 8px; font-size: 14px; }
+.burn-inspect-manager .bim-actions a { cursor: pointer; }
+.burn-inspect-manager .bim-foot { display: flex; justify-content: flex-end; }

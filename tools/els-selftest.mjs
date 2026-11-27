@@ -375,6 +375,12 @@ function check(name, cond, detail = "") {
   check("переводы: ключи ru и en совпадают", a === b);
 }
 
+// 12. Осмотр предметов (inspect/) — своя логика, общий прогон
+{
+  const { runInspectTests } = await import("./inspect-selftest.mjs");
+  await runInspectTests(check);
+}
+
 console.log(`ELS selftest: ${passed} прошло, ${failures.length} не прошло`);
 for (const f of failures) console.log(`  ✗ ${f}`);
 process.exit(failures.length ? 1 : 0);

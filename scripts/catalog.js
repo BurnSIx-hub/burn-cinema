@@ -56,6 +56,14 @@ const CARDS = [
     icon: "fa-solid fa-brain",
     gmOnly: true,
     run: () => game.burnCinema?.openMadness?.()
+  },
+  {
+    id: "inspect",
+    title: "Осмотр предметов",
+    sub: "Зоны на карте: лупа, подсветка и плашка с текстом",
+    icon: "fa-solid fa-magnifying-glass",
+    gmOnly: true,
+    run: () => game.burnCinema?.openInspect?.()
   }
 ];
 

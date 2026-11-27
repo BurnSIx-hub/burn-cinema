@@ -1,0 +1,78 @@
+{
+  "TYPES": {
+    "RegionBehavior": {
+      "burn-cinema": { "inspect": "🔥 Inspect Item" }
+    }
+  },
+  "BURNINSPECT": {
+    "Behavior": {
+      "FIELDS": {
+        "title": { "label": "Item name", "hint": "Shown on hover and as the plaque header. May be empty." },
+        "text": { "label": "Inspection text", "hint": "What the character sees. With a skill check — the success text." },
+        "checkMode": { "label": "Check", "hint": "Roll — the player rolls the skill on first inspection; passive — the passive skill score is compared, no roll." },
+        "skill": { "label": "Skill" },
+        "dc": { "label": "Difficulty (DC)" },
+        "textFail": { "label": "Failure text", "hint": "Empty — \"Nothing of note.\"" },
+        "visibility": { "label": "Show to" },
+        "range": { "label": "Range", "hint": "In scene units from the token to the zone edge. 0 — unlimited." },
+        "repeat": { "label": "Repeat inspection" },
+        "gmNote": { "label": "GM note", "hint": "Hidden from players. Whispered to the GM when someone inspects the zone." },
+        "sound": { "label": "Sound", "hint": "Plays for whoever sees the plaque." },
+        "duration": { "label": "Display time, s", "hint": "0 — the plaque stays until closed or clicked away." }
+      }
+    },
+    "Check": { "none": "No check", "roll": "Skill roll", "passive": "Passive check" },
+    "Visibility": { "self": "Only the inspector", "all": "All players", "chat": "Inspector and a chat entry" },
+    "VisibilityShort": { "self": "private", "all": "all", "chat": "chat" },
+    "Repeat": { "remember": "Remember the result (repeat without rolling)", "always": "Fresh every time", "once": "Once, then the zone goes dark" },
+    "RepeatShort": { "remember": "remembers", "always": "fresh", "once": "once" },
+    "BehaviorName": "🔥 Inspect",
+    "Thing": "Item",
+    "DefaultFail": "Nothing of note.",
+    "TooFar": "You can't make it out from here — move closer.",
+    "NeedToken": "Select your character first.",
+    "NoGM": "No GM in the game: the inspection won't be remembered.",
+    "Error": "Inspect: error (see console)",
+    "RollFlavor": "Inspect \"{title}\": {skill}",
+    "Passive": "passive",
+    "PassiveShort": "pass.",
+    "Roll": "roll",
+    "DC": "DC",
+    "OnSuccess": "Success",
+    "GmOnly": "GM only",
+    "OnFail": "Failure",
+    "Success": "success",
+    "Failure": "failure",
+    "Remembered": "remembered",
+    "ShowAll": "Show everyone",
+    "ShownAll": "\"{title}\" shown to all players",
+    "Edit": "Configure",
+    "Close": "Close",
+    "ReportHead": "{who} ({user}) inspects \"{title}\"",
+    "Settings": {
+      "GmReport": { "Name": "Inspect: GM report in chat", "Hint": "When a player inspects a zone, the GM gets a whisper with who, what and the result, plus the GM note." }
+    },
+    "ByTile": "From tile",
+    "ByPoint": "Cell at point",
+    "ToRegions": "To selected",
+    "ToRegionsHint": "Add inspection to regions selected on the Regions layer",
+    "ManagerHint": "You can also draw a zone yourself: Regions layer → any shape → behavior \"🔥 Inspect Item\".",
+    "NoScene": "No scene is open.",
+    "NoZones": "No inspection zones on this scene yet.",
+    "EmptyText": "no text yet",
+    "SeenHint": "How many characters have inspected it",
+    "Pan": "Show on map",
+    "Enable": "Enable",
+    "Disable": "Disable",
+    "Reset": "Reset inspection memory",
+    "ResetAll": "Reset memory of all zones",
+    "ResetAllConfirm": "Forget who has inspected what on this scene? Checks will be rolled again.",
+    "Delete": "Delete",
+    "DeleteRegionConfirm": "Delete region \"{name}\" together with the inspection?",
+    "DeleteBehaviorConfirm": "Remove the inspection from the region? Other behaviors stay.",
+    "PickTile": "Click the item's tile (Esc to cancel)",
+    "PickPoint": "Click where to place the zone (Esc to cancel)",
+    "PickCancelled": "Selection cancelled",
+    "NoTileHere": "No tile here"
+  }
+}

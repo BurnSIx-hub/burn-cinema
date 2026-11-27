@@ -1,10 +1,14 @@
 /**
  * ПАНЕЛЬ ГМ — «Восприятие безумия» (ApplicationV2 + Handlebars).
  *
- * Три зоны: цель (сила фона, стоп), колода видений текущей сцены (вспышка,
- * держать, в фон) и форма нового видения. Объекты для облика, призрака и
- * пропажи берутся из выделенного на сцене — ГМ ставит и двигает их
- * штатными инструментами Foundry.
+ * Сверху — игроки фишками: на фишке видно, у кого что-то держится и кто
+ * нажал стоп. Ниже две вкладки:
+ *   • «Игра» — что видит цель, сила фона, карточки видений текущей сцены
+ *     (вспышка, держать, в фон) и своя музыка;
+ *   • «Мастерская» — редактор видения по шагам и список всех видений.
+ * Объекты для облика, призрака и пропажи берутся из выделенного на сцене —
+ * ГМ ставит и двигает их штатными инструментами Foundry. Выделенное
+ * показывается в редакторе сразу, без перерисовки панели.
  *
  * Недописанное в форме хранится в #draft и переживает перерисовку панели
  * (перерисовка приходит от любой записи настроек).
@@ -31,6 +35,8 @@ export const statusCache = new Map();
 
 const L = (k) => game.i18n.localize(`burncinema.Madness.${k}`);
 const F = (k, data) => game.i18n.format(`burncinema.Madness.${k}`, data);
+const esc = (s) => foundry.utils.escapeHTML(String(s ?? ""));
+const VIDEO_RE = /\.(webm|mp4|m4v|ogv)$/i;
 
 function basename(p) {
   return String(p ?? "").split(/[\\/]/).pop().replace(/\.[^.]+$/, "");
@@ -93,7 +99,7 @@ function lookFromDraft(d) {
   });
 }
 
-/** Коротко о настройках облика — для карточки в колоде. */
+/** Коротко о настройках облика — для карточки и свёрнутой тонкой настройки. */
 function lookSummary(look) {
   const k = normalizeLook(look);
   const parts = [];
@@ -124,19 +130,31 @@ function selection() {
   };
 }
 
+/** Цвет пользователя для фишки. */
+function userColor(u) {
+  const c = u.color;
+  return c?.css ?? (c ? String(c) : "#666666");
+}
+
 export class MadnessPanel extends HandlebarsApplicationMixin(ApplicationV2) {
   static #instance = null;
 
   #userId = null;
   #draft = emptyDraft();
   #allScenes = false;
+  #tab = "play";
+  #fineOpen = false;
+  #musicOpen = false;
 
   static DEFAULT_OPTIONS = {
     id: "burn-cinema-madness",
     classes: ["burn-madness"],
     window: { title: "burncinema.Madness.Title", icon: "fa-solid fa-brain", resizable: true },
-    position: { width: 560, height: "auto" },
+    position: { width: 660, height: "auto" },
     actions: {
+      pickTarget: MadnessPanel.#onPickTarget,
+      setTab: MadnessPanel.#onSetTab,
+      setIntensity: MadnessPanel.#onSetIntensity,
       resume: MadnessPanel.#onResume,
       clearTarget: MadnessPanel.#onClearTarget,
       stopAll: MadnessPanel.#onStopAll,
@@ -146,13 +164,16 @@ export class MadnessPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       editVision: MadnessPanel.#onEditVision,
       deleteVision: MadnessPanel.#onDeleteVision,
       setKind: MadnessPanel.#onSetKind,
+      toggleFine: MadnessPanel.#onToggleFine,
       pickImg: MadnessPanel.#onPickImg,
       savePreset: MadnessPanel.#onSavePreset,
       usePreset: MadnessPanel.#onUsePreset,
       removePreset: MadnessPanel.#onRemovePreset,
       pickSound: MadnessPanel.#onPickSound,
       submitVision: MadnessPanel.#onSubmitVision,
+      submitAndHold: MadnessPanel.#onSubmitAndHold,
       cancelEdit: MadnessPanel.#onCancelEdit,
+      toggleMusic: MadnessPanel.#onToggleMusic,
       musicPick: MadnessPanel.#onMusicPick,
       musicFromLM: MadnessPanel.#onMusicFromLM,
       musicSavePreset: MadnessPanel.#onMusicSavePreset,
@@ -183,7 +204,7 @@ export class MadnessPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     if (this.#instance?.rendered) this.#instance.#paintStatus();
   }
 
-  /** Обновить счётчик выделенного на сцене. */
+  /** Обновить выделенное на сцене в редакторе. */
   static updateSelection() {
     if (this.#instance?.rendered) this.#instance.#paintSelection();
   }
@@ -197,38 +218,26 @@ export class MadnessPanel extends HandlebarsApplicationMixin(ApplicationV2) {
 
     root.addEventListener("input", (ev) => {
       const el = ev.target;
-      if (el?.dataset?.draft) this.#readDraftField(el);
-      if (el?.type === "range" && el.dataset?.draft) {
+      if (!el?.dataset?.draft) return;
+      this.#readDraftField(el);
+      if (el.type === "range") {
         const out = el.parentElement?.querySelector("output");
         if (out) out.textContent = el.value;
       }
-      if (el?.name === "intensity") {
-        const out = root.querySelector("[data-intensity-label]");
-        if (out) out.textContent = L(`Intensity${el.value}`);
-      }
+      if (["hue", "saturation", "brightness"].includes(el.dataset.draft)) this.#paintSwatch();
     });
 
     root.addEventListener("change", async (ev) => {
       const el = ev.target;
       if (el?.dataset?.draft) this.#readDraftField(el);
       switch (el?.name) {
-        case "target":
-          this.#userId = el.value;
-          await game.settings.set(MODULE_ID, SETTING_LAST_TARGET, el.value);
-          this.render();
-          break;
-        case "intensity": {
-          const userId = this.#currentUserId();
-          if (userId) await updateTarget(userId, { intensity: Math.max(0, Math.min(3, el.value | 0)) });
-          break;
-        }
         case "allScenes":
           this.#allScenes = el.checked;
           this.render();
-          break;
+          return;
         case "byActor":
-          this.render(); // подсказка про выделение зависит от галки
-          break;
+          this.#draft.byActor = el.value === "1";
+          return;
       }
       // Цвета кольца не нужны, когда кольцо снимаем.
       if (el?.dataset?.draft === "lookRing") this.render();
@@ -239,6 +248,7 @@ export class MadnessPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     super._onRender?.(context, options);
     this.#paintStatus();
     this.#paintSelection();
+    this.#paintSwatch();
   }
 
   #readDraftField(el) {
@@ -265,28 +275,31 @@ export class MadnessPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     return (this.#userId = first?.id ?? null);
   }
 
+  /** Объекты видения словами: «Жрец, Гоблин и ещё 2» или «все токены: …». */
+  #objectsText(v) {
+    if (v.kind === "appearance" && v.actors?.length) {
+      return F("AllTokensOf", { names: v.actors.map((id) => game.actors.get(id)?.name ?? "?").join(", ") });
+    }
+    const all = [
+      ...(v.tokens ?? []).map((id) => objectName(v.sceneId, "tokens", id) ?? "?"),
+      ...(v.tiles ?? []).map((id) => objectName(v.sceneId, "tiles", id) ?? "?")
+    ];
+    if (!all.length) return L("NoObjects");
+    const shown = all.slice(0, 3).join(", ");
+    return all.length > 3 ? `${shown} ${F("AndMore", { n: all.length - 3 })}` : shown;
+  }
+
   #describe(v) {
-    const objects = () => {
-      const all = [
-        ...(v.tokens ?? []).map((id) => objectName(v.sceneId, "tokens", id) ?? "?"),
-        ...(v.tiles ?? []).map((id) => objectName(v.sceneId, "tiles", id) ?? "?")
-      ];
-      if (!all.length) return L("NoObjects");
-      const shown = all.slice(0, 3).join(", ");
-      return all.length > 3 ? `${shown} ${F("AndMore", { n: all.length - 3 })}` : shown;
-    };
     switch (v.kind) {
       case "appearance": {
-        const who = v.actors?.length
-          ? F("AllTokensOf", { names: v.actors.map((id) => game.actors.get(id)?.name ?? "?").join(", ") })
-          : objects();
+        const who = this.#objectsText(v);
         const extra = lookSummary(v.look);
         const base = v.label ? `${who} → «${v.label}»` : who;
         return extra ? `${base} · ${extra}` : base;
       }
       case "phantom":
       case "vanish":
-        return objects();
+        return this.#objectsText(v);
       case "tint":
         return F("TintDesc", { hue: v.tint?.hue ?? 0, sat: v.tint?.saturation ?? 1, bri: v.tint?.brightness ?? 1 });
       case "sound":
@@ -315,72 +328,84 @@ export class MadnessPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     const deck = getDeck();
     const held = new Set(target?.held ?? []);
     const ambient = new Set(target?.ambient ?? []);
+    const d = this.#draft;
 
     const here = deck.filter((v) => appliesToScene(v, sceneId));
     const shownDeck = this.#allScenes ? deck : here;
-    const visions = shownDeck.map((v) => ({
+    const card = (v) => ({
       id: v.id,
       name: v.name || this.#autoName(v),
       kind: v.kind,
       icon: KIND_ICONS[v.kind] ?? "fa-question",
       kindLabel: L(`Kind.${v.kind}`),
       desc: this.#describe(v),
-      img: v.kind === "appearance" ? v.img : null,
+      img: v.kind === "appearance" && v.img && !VIDEO_RE.test(v.img) ? v.img : null,
       held: held.has(v.id),
       ambient: ambient.has(v.id),
       elsewhere: !appliesToScene(v, sceneId),
       sceneName: v.sceneId ? (game.scenes.get(v.sceneId)?.name ?? "?") : null,
-      editing: this.#draft.editingId === v.id
-    }));
+      editing: d.editingId === v.id
+    });
 
     const targets = getAllTargets();
-    const activeCount = Object.values(targets)
-      .filter((t) => isTargetActive(foundry.utils.mergeObject(defaultTarget(), t, { inplace: false }))).length;
-
-    const d = this.#draft;
+    const full = (t) => foundry.utils.mergeObject(defaultTarget(), t ?? {}, { inplace: false });
+    const activeCount = Object.values(targets).filter((t) => isTargetActive(full(t))).length;
     const music = target?.music ?? defaultTarget().music;
+    const needsSelection = ["appearance", "phantom", "vanish"].includes(d.kind);
 
     return {
       users: this.#players().map((u) => {
-        const t = targets[u.id];
-        let label = u.name;
-        if (!u.active) label += ` (${L("Offline")})`;
-        if (isStopped(u)) label = `⛔ ${label}`;
-        else if (t && isTargetActive(foundry.utils.mergeObject(defaultTarget(), t, { inplace: false }))) label = `● ${label}`;
-        return { id: u.id, label, selected: u.id === userId };
+        const t = full(targets[u.id]);
+        const stopped = isStopped(u);
+        const tips = [u.name];
+        if (!u.active) tips.push(L("Offline"));
+        if (stopped) tips.push(L("StatusStopped"));
+        return {
+          id: u.id,
+          name: u.name,
+          initial: (u.name || "?").slice(0, 1).toUpperCase(),
+          color: userColor(u),
+          online: u.active,
+          stopped,
+          live: isTargetActive(t),
+          heldCount: t.held.length,
+          selected: u.id === userId,
+          tooltip: tips.join(" · ")
+        };
       }),
       hasTarget: !!userId,
-      targetName: user?.name ?? "",
       stopped: isStopped(user),
-      target,
-      intensityLabel: L(`Intensity${target?.intensity ?? 0}`),
       activeCount,
-      sceneName: canvas.scene?.name ?? "—",
-      visions,
-      hasVisions: visions.length > 0,
+      isPlay: this.#tab === "play",
+
+      intensities: [0, 1, 2, 3].map((i) => ({ value: i, label: L(`Intensity${i}`), on: (target?.intensity ?? 0) === i })),
+      visions: shownDeck.map(card),
+      hasVisions: shownDeck.length > 0,
       elsewhereCount: deck.length - here.length,
       allScenes: this.#allScenes,
+      music,
+      musicOpen: this.#musicOpen,
+      musicPresets: getMusicPresets(),
+      musicTrackName: music.track?.displayTitle || music.track?.title || "",
+      hasLazyMusic: !!game.modules.get("lazy-music")?.active,
+
       draft: d,
       editing: !!d.editingId,
       kinds: KINDS.map((k) => ({ key: k, icon: KIND_ICONS[k], label: L(`Kind.${k}`), active: d.kind === k })),
       kindHint: L(`KindHint.${d.kind}`),
       isAppearance: d.kind === "appearance",
       isPhantom: d.kind === "phantom",
-      isVanish: d.kind === "vanish",
       isTint: d.kind === "tint",
       isSound: d.kind === "sound",
-      needsSelection: ["appearance", "phantom", "vanish"].includes(d.kind),
-      presets: getPresets(),
-      ringModes: RING_MODES.map((m) => ({
-        value: m,
-        label: L(`LookRingMode.${m}`),
-        selected: d.lookRing === m
-      })),
+      needsSelection,
+      nameStep: d.kind === "appearance" ? 4 : 3,
+      presets: getPresets().map((p) => ({ ...p, on: p.src === d.img })),
+      fineOpen: this.#fineOpen,
+      lookSummary: d.kind === "appearance" ? lookSummary(lookFromDraft(d)) : "",
+      ringModes: RING_MODES.map((m) => ({ value: m, label: L(`LookRingMode.${m}`), selected: d.lookRing === m })),
       lookRingOff: d.lookRing === "off",
-      musicPresets: getMusicPresets(),
-      music,
-      musicTrackName: music.track?.displayTitle || music.track?.title || "",
-      hasLazyMusic: !!game.modules.get("lazy-music")?.active
+      createHoldLabel: F("CreateAndHold", { name: user?.name ?? "" }),
+      allVisions: deck.map(card)
     };
   }
 
@@ -405,8 +430,7 @@ export class MadnessPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     });
     const parts = [];
     if (s.stopped) parts.push(L("StatusStopped"));
-    else parts.push(`${L("StatusSees")}: ${names.length ? names.join(", ") : "—"}`);
-    parts.push(`${L("StatusAmbient")}: ${s.intensity ?? 0}`);
+    else parts.push(`${L("StatusSees")}: ${names.length ? names.join(", ") : L("StatusNothing")}`);
     if (s.sceneId && s.sceneId !== canvas.scene?.id) {
       parts.push(F("StatusOtherScene", { name: game.scenes.get(s.sceneId)?.name ?? "?" }));
     }
@@ -421,15 +445,58 @@ export class MadnessPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     if (text) text.textContent = parts.join(" · ");
   }
 
+  /** Что выделено на сцене — в шаге «На кого» редактора. */
   #paintSelection() {
     const el = this.element?.querySelector("[data-selection]");
     if (!el) return;
+    const d = this.#draft;
     const { tokens, tiles } = selection();
-    el.textContent = F("Selected", { tokens: tokens.length, tiles: tiles.length });
-    el.classList.toggle("bm-warn", tokens.length + tiles.length === 0);
+    const items = [
+      ...tokens.map((t) => ({ name: t.document.name, img: t.document.texture?.src })),
+      ...(d.kind === "appearance" ? [] : tiles.map((t) => ({
+        name: basename(t.document.texture?.src) || "Tile", img: t.document.texture?.src
+      })))
+    ];
+    const chip = (x) => `<span class="bm-tokchip">${x.img && !VIDEO_RE.test(x.img) ? `<img src="${esc(x.img)}">` : ""}${esc(x.name)}</span>`;
+    const base = d.editingId ? getVision(d.editingId) : null;
+    if (items.length) {
+      el.innerHTML = `<div class="bm-selected">${items.map(chip).join("")}</div>`
+        + (base ? `<p class="bm-hint">${esc(L("SelectionReplaces"))}</p>` : "");
+    } else if (base) {
+      el.innerHTML = `<div class="bm-dropzone">${esc(F("SelectionKeeps", { what: this.#objectsText(base) }))}</div>`;
+    } else {
+      el.innerHTML = `<div class="bm-dropzone bm-want"><i class="fa-solid fa-arrow-pointer"></i> ${esc(L(d.kind === "appearance" ? "SelectTokens" : "SelectObjects"))}</div>`;
+    }
+  }
+
+  /** Примерный вид сдвига цвета — на полосе-образце. */
+  #paintSwatch() {
+    const el = this.element?.querySelector("[data-swatch]");
+    if (!el) return;
+    const d = this.#draft;
+    el.style.filter = `hue-rotate(${Number(d.hue) || 0}deg) saturate(${Number(d.saturation) ?? 1}) brightness(${Number(d.brightness) ?? 1})`;
   }
 
   /* ------------------------------ Цель ------------------------------------ */
+
+  static async #onPickTarget(_ev, el) {
+    const id = el.dataset.userId;
+    if (!id || id === this.#userId) return;
+    this.#userId = id;
+    this.render();
+    dispatch("ping", null);
+    await game.settings.set(MODULE_ID, SETTING_LAST_TARGET, id);
+  }
+
+  static #onSetTab(_ev, el) {
+    this.#tab = el.dataset.tab === "work" ? "work" : "play";
+    this.render();
+  }
+
+  static async #onSetIntensity(_ev, el) {
+    const userId = this.#currentUserId();
+    if (userId) await updateTarget(userId, { intensity: Math.max(0, Math.min(3, Number(el.dataset.value) | 0)) });
+  }
 
   static async #onResume() {
     const user = game.users.get(this.#currentUserId());
@@ -467,6 +534,11 @@ export class MadnessPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     if (isStopped(game.users.get(userId))) return ui.notifications.warn(L("TargetStopped"));
     const ms = Math.max(0.2, Number(this.#draft.flashSec) || FLASH_SECONDS) * 1000;
     dispatch("flash", userId, { visionId, ms });
+    const card = el.closest(".bm-card");
+    if (card) {
+      card.classList.add("flashing");
+      setTimeout(() => card.classList.remove("flashing"), ms);
+    }
   }
 
   static async #onToggleHeld(_ev, el) {
@@ -508,6 +580,8 @@ export class MadnessPanel extends HandlebarsApplicationMixin(ApplicationV2) {
       soundSrc: v.sound?.src ?? "",
       soundVolume: v.sound?.volume ?? 0.8
     };
+    this.#fineOpen = v.kind === "appearance" && !isPlainLook(v.look);
+    this.#tab = "work";
     this.render();
   }
 
@@ -516,7 +590,7 @@ export class MadnessPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     if (!v) return;
     const ok = await foundry.applications.api.DialogV2.confirm({
       window: { title: L("DeleteTitle") },
-      content: `<p>${F("DeleteConfirm", { name: foundry.utils.escapeHTML(v.name || this.#autoName(v)) })}</p>`
+      content: `<p>${F("DeleteConfirm", { name: esc(v.name || this.#autoName(v)) })}</p>`
     });
     if (!ok) return;
     if (this.#draft.editingId === v.id) this.#draft = emptyDraft(this.#draft);
@@ -528,6 +602,11 @@ export class MadnessPanel extends HandlebarsApplicationMixin(ApplicationV2) {
   static #onSetKind(_ev, el) {
     if (this.#draft.editingId) return; // вид правимого видения не меняем
     this.#draft.kind = el.dataset.kind;
+    this.render();
+  }
+
+  static #onToggleFine() {
+    this.#fineOpen = !this.#fineOpen;
     this.render();
   }
 
@@ -564,12 +643,29 @@ export class MadnessPanel extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   static async #onSubmitVision() {
+    await this.#submit(false);
+  }
+
+  /** Создать и сразу держать у выбранного игрока — и перейти на «Игру». */
+  static async #onSubmitAndHold() {
+    await this.#submit(true);
+  }
+
+  async #submit(hold) {
     const v = this.#buildVision();
     if (!v) return;
+    const editing = !!this.#draft.editingId;
     const toHide = v.kind === "phantom" && this.#draft.autoHide ? this.#visibleObjects(v) : null;
     await saveVision(v);
     if (toHide) await this.#hideObjects(v.sceneId, toHide);
-    ui.notifications.info(F(this.#draft.editingId ? "VisionSaved" : "VisionCreated", { name: v.name }));
+    const userId = hold ? this.#currentUserId() : null;
+    if (userId) {
+      const held = new Set(getTarget(userId).held);
+      held.add(v.id);
+      await updateTarget(userId, { held: [...held] });
+      this.#tab = "play";
+    }
+    ui.notifications.info(F(editing ? "VisionSaved" : "VisionCreated", { name: v.name }));
     this.#draft = emptyDraft(this.#draft);
     this.render();
   }
@@ -670,6 +766,11 @@ export class MadnessPanel extends HandlebarsApplicationMixin(ApplicationV2) {
     return track;
   }
 
+  static #onToggleMusic() {
+    this.#musicOpen = !this.#musicOpen;
+    this.render();
+  }
+
   static #onMusicPick() {
     openFilePicker("audio", this.#draft.musicSrc, (p) => { this.#draft.musicSrc = p; this.render(); });
   }
@@ -718,7 +819,7 @@ export class MadnessPanel extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 }
 
-/* Счётчик выделенного в форме — без перерисовки панели. */
+/* Выделенное на сцене в редакторе — без перерисовки панели. */
 for (const hook of ["controlToken", "controlTile", "canvasReady"]) {
   Hooks.on(hook, () => { if (game.user?.isGM) MadnessPanel.updateSelection(); });
 }

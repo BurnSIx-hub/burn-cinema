@@ -1,15 +1,18 @@
 <div class="bm-panel">
 
-  {{!-- Цель --}}
-  <div class="bm-row bm-target">
-    <label>{{localize "burncinema.Madness.Target"}}</label>
-    <select name="target">
+  {{!-- Игроки --}}
+  <div class="bm-head">
+    <div class="bm-chips">
       {{#each users}}
-        <option value="{{id}}" {{#if selected}}selected{{/if}}>{{label}}</option>
+        <button type="button" class="bm-chip {{#if selected}}on{{/if}} {{#unless online}}off{{/unless}}" data-action="pickTarget" data-user-id="{{id}}" data-tooltip="{{tooltip}}">
+          <span class="bm-ava" style="background:{{color}}">{{initial}}</span>
+          <span class="bm-chip-name">{{name}}</span>
+          {{#if stopped}}<i class="fa-solid fa-hand bm-b-stop"></i>{{else if live}}<span class="bm-b-live">{{#if heldCount}}{{heldCount}}{{/if}}</span>{{/if}}
+        </button>
       {{/each}}
-    </select>
+    </div>
     {{#if activeCount}}
-      <button type="button" class="bm-danger" data-action="stopAll" data-tooltip="{{localize "burncinema.Madness.StopAllHint"}}">
+      <button type="button" class="bm-ghost bm-danger" data-action="stopAll" data-tooltip="{{localize "burncinema.Madness.StopAllHint"}}">
         <i class="fa-solid fa-power-off"></i> {{localize "burncinema.Madness.StopAll"}} ({{activeCount}})
       </button>
     {{/if}}
@@ -19,223 +22,254 @@
     <p class="bm-empty">{{localize "burncinema.Madness.NoPlayers"}}</p>
   {{else}}
 
-  <div class="bm-status" data-status>
-    <span class="bm-dot"></span><span class="bm-status-text"></span>
-  </div>
+  <nav class="bm-tabs">
+    <button type="button" class="{{#if isPlay}}on{{/if}}" data-action="setTab" data-tab="play"><i class="fa-solid fa-play"></i> {{localize "burncinema.Madness.TabPlay"}}</button>
+    <button type="button" class="{{#unless isPlay}}on{{/unless}}" data-action="setTab" data-tab="work"><i class="fa-solid fa-hammer"></i> {{localize "burncinema.Madness.TabWork"}}{{#if editing}} <i class="fa-solid fa-pen bm-dim"></i>{{/if}}</button>
+  </nav>
 
-  {{#if stopped}}
-    <div class="bm-stopbanner">
-      <i class="fa-solid fa-hand"></i>
-      <span>{{localize "burncinema.Madness.StoppedBanner"}}</span>
-      <button type="button" data-action="resume"><i class="fa-solid fa-play"></i> {{localize "burncinema.Madness.Resume"}}</button>
-    </div>
-  {{/if}}
+  {{#if isPlay}}
+  {{!-- ================================ Игра ================================ --}}
 
-  {{!-- Фон безумия --}}
-  <fieldset class="bm-fieldset">
-    <legend>{{localize "burncinema.Madness.Ambient"}}</legend>
-    <div class="bm-row bm-intensity">
-      <input type="range" name="intensity" min="0" max="3" step="1" value="{{target.intensity}}">
-      <b data-intensity-label>{{intensityLabel}}</b>
-    </div>
-    <p class="bm-hint">{{localize "burncinema.Madness.AmbientHint"}}</p>
-    <div class="bm-row">
-      <label class="bm-inline">{{localize "burncinema.Madness.FlashSec"}}
-        <input type="number" data-draft="flashSec" min="0.2" step="0.5" value="{{draft.flashSec}}">
-      </label>
-      <button type="button" data-action="clearTarget"><i class="fa-solid fa-broom"></i> {{localize "burncinema.Madness.ClearTarget"}}</button>
-    </div>
-  </fieldset>
-
-  {{!-- Колода --}}
-  <fieldset class="bm-fieldset">
-    <legend>{{localize "burncinema.Madness.Deck"}} · {{sceneName}}</legend>
-    {{#if hasVisions}}
-      <ul class="bm-deck">
-        {{#each visions}}
-          <li class="bm-card {{#if held}}held{{/if}} {{#if elsewhere}}elsewhere{{/if}} {{#if editing}}editing{{/if}}" data-vision-id="{{id}}">
-            {{#if img}}<img class="bm-card-img" src="{{img}}">{{else}}<i class="bm-card-icon fa-solid {{icon}}"></i>{{/if}}
-            <div class="bm-card-text">
-              <span class="bm-card-name">{{name}}</span>
-              <span class="bm-card-desc">{{kindLabel}} · {{desc}}{{#if elsewhere}} · <i>{{sceneName}}</i>{{/if}}</span>
-            </div>
-            <div class="bm-card-tools">
-              <button type="button" data-action="flash" data-tooltip="{{localize "burncinema.Madness.FlashHint"}}" {{#if elsewhere}}disabled{{/if}} {{#if held}}disabled{{/if}}><i class="fa-solid fa-bolt"></i></button>
-              <button type="button" class="bm-tog {{#if held}}on{{/if}}" data-action="toggleHeld" data-tooltip="{{localize "burncinema.Madness.HoldHint"}}"><i class="fa-solid fa-thumbtack"></i></button>
-              <button type="button" class="bm-tog {{#if ambient}}on{{/if}}" data-action="toggleAmbient" data-tooltip="{{localize "burncinema.Madness.AmbientToggleHint"}}"><i class="fa-solid fa-dice"></i></button>
-              <button type="button" data-action="editVision" data-tooltip="{{localize "burncinema.Madness.Edit"}}"><i class="fa-solid fa-pen"></i></button>
-              <button type="button" data-action="deleteVision" data-tooltip="{{localize "burncinema.Madness.Delete"}}"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-          </li>
-        {{/each}}
-      </ul>
-    {{else}}
-      <p class="bm-empty">{{localize "burncinema.Madness.DeckEmpty"}}</p>
+    {{#if stopped}}
+      <div class="bm-stopbanner">
+        <i class="fa-solid fa-hand"></i>
+        <span>{{localize "burncinema.Madness.StoppedBanner"}}</span>
+        <button type="button" data-action="resume"><i class="fa-solid fa-play"></i> {{localize "burncinema.Madness.Resume"}}</button>
+      </div>
     {{/if}}
+
+    <div class="bm-status" data-status>
+      <span class="bm-dot"></span><span class="bm-status-text"></span>
+    </div>
+
+    <div class="bm-line">
+      <span class="bm-lbl" data-tooltip="{{localize "burncinema.Madness.AmbientHint"}}">{{localize "burncinema.Madness.Ambient"}}</span>
+      <div class="bm-seg">
+        {{#each intensities}}
+          <button type="button" class="i{{value}} {{#if on}}on{{/if}}" data-action="setIntensity" data-value="{{value}}">{{label}}</button>
+        {{/each}}
+      </div>
+      <span class="bm-lbl">{{localize "burncinema.Madness.FlashSec"}}</span>
+      <input type="number" class="bm-num" data-draft="flashSec" min="0.2" step="0.5" value="{{draft.flashSec}}">
+      <button type="button" class="bm-ico" data-action="clearTarget" data-tooltip="{{localize "burncinema.Madness.ClearTarget"}}"><i class="fa-solid fa-broom"></i></button>
+    </div>
+
+    {{#if hasVisions}}
+      <div class="bm-cards">
+        {{#each visions}}
+          <div class="bm-card {{#if held}}held{{/if}} {{#if elsewhere}}elsewhere{{/if}}" data-vision-id="{{id}}">
+            <div class="bm-card-top">
+              {{#if img}}<span class="bm-thumb"><img src="{{img}}"></span>{{else}}<span class="bm-thumb bm-k-{{kind}}"><i class="fa-solid {{icon}}"></i></span>{{/if}}
+              <span class="bm-txt">
+                <b>{{name}}</b>
+                <small>{{kindLabel}} · {{desc}}{{#if elsewhere}} · <i>{{sceneName}}</i>{{/if}}</small>
+              </span>
+              <button type="button" class="bm-ico {{#if ambient}}on{{/if}}" data-action="toggleAmbient" data-tooltip="{{#if ambient}}{{localize "burncinema.Madness.InAmbient"}}{{else}}{{localize "burncinema.Madness.AddToAmbient"}}{{/if}}"><i class="fa-solid fa-dice"></i></button>
+            </div>
+            <div class="bm-card-btns">
+              <button type="button" class="bm-btn" data-action="flash" data-tooltip="{{localize "burncinema.Madness.FlashHint"}}" {{#if elsewhere}}disabled{{/if}} {{#if held}}disabled{{/if}}><i class="fa-solid fa-bolt"></i> {{localize "burncinema.Madness.Flash"}}</button>
+              <button type="button" class="bm-btn bm-hold {{#if held}}on{{/if}}" data-action="toggleHeld" data-tooltip="{{localize "burncinema.Madness.HoldHint"}}"><i class="fa-solid fa-thumbtack"></i> {{#if held}}{{localize "burncinema.Madness.Holding"}}{{else}}{{localize "burncinema.Madness.Hold"}}{{/if}}</button>
+            </div>
+          </div>
+        {{/each}}
+      </div>
+    {{else}}
+      <div class="bm-empty">
+        <p>{{localize "burncinema.Madness.DeckEmpty"}}</p>
+        <button type="button" data-action="setTab" data-tab="work"><i class="fa-solid fa-hammer"></i> {{localize "burncinema.Madness.CreateFirst"}}</button>
+      </div>
+    {{/if}}
+
     {{#if elsewhereCount}}
       <label class="bm-check bm-hint">
         <input type="checkbox" name="allScenes" {{#if allScenes}}checked{{/if}}>
         {{localize "burncinema.Madness.ShowAllScenes"}} ({{elsewhereCount}})
       </label>
     {{/if}}
-  </fieldset>
 
-  {{!-- Новое видение / правка --}}
-  <fieldset class="bm-fieldset bm-form">
-    <legend>{{#if editing}}{{localize "burncinema.Madness.EditVision"}}{{else}}{{localize "burncinema.Madness.NewVision"}}{{/if}}</legend>
-
-    <div class="bm-kinds">
-      {{#each kinds}}
-        <button type="button" class="bm-kind {{#if active}}on{{/if}}" data-action="setKind" data-kind="{{key}}" {{#if ../editing}}{{#unless active}}disabled{{/unless}}{{/if}}>
-          <i class="fa-solid {{icon}}"></i> {{label}}
-        </button>
-      {{/each}}
-    </div>
-    <p class="bm-hint">{{kindHint}}</p>
-
-    {{#if needsSelection}}
-      <p class="bm-selection" data-selection></p>
-    {{/if}}
-
-    {{#if isAppearance}}
-      <div class="bm-row bm-pick">
-        <input type="text" data-draft="img" value="{{draft.img}}" placeholder="{{localize "burncinema.Madness.PickImage"}}">
-        <button type="button" data-action="pickImg" data-tooltip="{{localize "burncinema.Madness.PickImage"}}"><i class="fa-solid fa-file-image"></i></button>
-        <button type="button" data-action="savePreset" data-tooltip="{{localize "burncinema.Madness.SavePreset"}}"><i class="fa-solid fa-star"></i></button>
+    {{#if hasLazyMusic}}
+      <div class="bm-music {{#if music.enabled}}on{{/if}}">
+        <i class="fa-solid fa-compact-disc"></i>
+        <span>{{localize "burncinema.Madness.MusicShort"}}: <b>{{#if music.enabled}}{{musicTrackName}}{{else}}{{localize "burncinema.Madness.MusicOff"}}{{/if}}</b></span>
+        {{#if music.enabled}}
+          <button type="button" data-action="musicStop"><i class="fa-solid fa-rotate-left"></i> {{localize "burncinema.Madness.MusicStop"}}</button>
+        {{/if}}
+        <button type="button" class="bm-ico" data-action="toggleMusic" data-tooltip="{{localize "burncinema.Madness.MusicSetup"}}"><i class="fa-solid fa-chevron-{{#if musicOpen}}up{{else}}down{{/if}}"></i></button>
       </div>
-      {{#if presets.length}}
-        <div class="bm-preset-lib">
-          {{#each presets}}
-            <div class="bm-preset" data-preset-id="{{id}}" data-src="{{src}}" data-action="usePreset" data-tooltip="{{name}}">
-              <img src="{{src}}" width="44" height="44">
-              <span>{{name}}</span>
-              <button type="button" class="bm-preset-del" data-action="removePreset"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-          {{/each}}
-        </div>
-      {{/if}}
-      <div class="bm-row">
-        <input type="text" data-draft="label" value="{{draft.label}}" placeholder="{{localize "burncinema.Madness.LabelPlaceholder"}}">
-      </div>
-      <div class="bm-look">
-        <div class="bm-look-row">
-          <span class="bm-look-label">{{localize "burncinema.Madness.LookScale"}}</span>
-          <input type="range" min="0.2" max="3" step="0.05" data-draft="lookScale" value="{{draft.lookScale}}">
-          <output>{{draft.lookScale}}</output>
-        </div>
-        <div class="bm-look-row">
-          <span class="bm-look-label">{{localize "burncinema.Madness.LookMirror"}}</span>
-          <label class="bm-inline" data-tooltip="{{localize "burncinema.Madness.LookMirrorX"}}"><input type="checkbox" data-draft="lookMirrorX" {{#if draft.lookMirrorX}}checked{{/if}}> ↔</label>
-          <label class="bm-inline" data-tooltip="{{localize "burncinema.Madness.LookMirrorY"}}"><input type="checkbox" data-draft="lookMirrorY" {{#if draft.lookMirrorY}}checked{{/if}}> ↕</label>
-        </div>
-        <div class="bm-look-row">
-          <span class="bm-look-label">{{localize "burncinema.Madness.LookRing"}}</span>
-          <select data-draft="lookRing">
-            {{#each ringModes}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}
-          </select>
-        </div>
-        {{#unless lookRingOff}}
-          <div class="bm-look-row">
-            <span class="bm-look-label"></span>
-            <label class="bm-inline"><input type="checkbox" data-draft="lookRingColorOn" {{#if draft.lookRingColorOn}}checked{{/if}}> {{localize "burncinema.Madness.LookRingColor"}}</label>
-            <input type="color" data-draft="lookRingColor" value="{{draft.lookRingColor}}">
-            <label class="bm-inline"><input type="checkbox" data-draft="lookRingBgOn" {{#if draft.lookRingBgOn}}checked{{/if}}> {{localize "burncinema.Madness.LookRingBg"}}</label>
-            <input type="color" data-draft="lookRingBg" value="{{draft.lookRingBg}}">
+      {{#if musicOpen}}
+        <div class="bm-music-box">
+          <div class="bm-line">
+            <input type="text" class="bm-grow" data-draft="musicSrc" value="{{draft.musicSrc}}" placeholder="{{localize "burncinema.Madness.MusicPlaceholder"}}">
+            <button type="button" class="bm-ico" data-action="musicPick" data-tooltip="{{localize "burncinema.Madness.MusicPickFile"}}"><i class="fa-solid fa-folder-open"></i></button>
+            <button type="button" class="bm-ico" data-action="musicFromLM" data-tooltip="{{localize "burncinema.Madness.MusicFromLM"}}"><i class="fa-solid fa-music"></i></button>
+            <button type="button" class="bm-ico" data-action="musicSavePreset" data-tooltip="{{localize "burncinema.Madness.SavePreset"}}"><i class="fa-solid fa-star"></i></button>
           </div>
-        {{/unless}}
-        <div class="bm-look-row">
-          <span class="bm-look-label">{{localize "burncinema.Madness.LookTint"}}</span>
-          <input type="color" data-draft="lookTint" value="{{draft.lookTint}}" data-tooltip="{{localize "burncinema.Madness.LookTintHint"}}">
+          {{#if musicPresets.length}}
+            <ul class="bm-list">
+              {{#each musicPresets}}
+                <li class="bm-row slim" data-preset-id="{{id}}">
+                  <i class="fa-solid fa-compact-disc"></i>
+                  <span class="bm-clickable bm-grow" data-action="musicUsePreset">{{name}}</span>
+                  <button type="button" class="bm-ico" data-action="musicRemovePreset"><i class="fa-solid fa-xmark"></i></button>
+                </li>
+              {{/each}}
+            </ul>
+          {{/if}}
+          <div class="bm-line">
+            <label class="bm-check bm-grow" data-tooltip="{{localize "burncinema.Madness.MusicIsolateHint"}}">
+              <input type="checkbox" name="music-isolate" {{#if music.isolate}}checked{{/if}}>
+              {{localize "burncinema.Madness.MusicIsolate"}}
+            </label>
+            <button type="button" class="bm-btn" data-action="musicStart"><i class="fa-solid fa-play"></i> {{localize "burncinema.Madness.MusicStart"}}</button>
+          </div>
         </div>
-        <div class="bm-look-row">
-          <span class="bm-look-label">{{localize "burncinema.Madness.LookAlpha"}}</span>
-          <input type="range" min="0.1" max="1" step="0.05" data-draft="lookAlpha" value="{{draft.lookAlpha}}">
-          <output>{{draft.lookAlpha}}</output>
-        </div>
-      </div>
-      <label class="bm-check">
-        <input type="checkbox" name="byActor" data-draft="byActor" {{#if draft.byActor}}checked{{/if}}>
-        {{localize "burncinema.Madness.ByActor"}}
-      </label>
-    {{/if}}
-
-    {{#if isPhantom}}
-      <label class="bm-check">
-        <input type="checkbox" data-draft="autoHide" {{#if draft.autoHide}}checked{{/if}}>
-        {{localize "burncinema.Madness.AutoHide"}}
-      </label>
-    {{/if}}
-
-    {{#if isTint}}
-      <div class="bm-row"><label class="bm-slider">{{localize "burncinema.Madness.Hue"}}
-        <input type="range" data-draft="hue" min="0" max="360" step="1" value="{{draft.hue}}"></label></div>
-      <div class="bm-row"><label class="bm-slider">{{localize "burncinema.Madness.Saturation"}}
-        <input type="range" data-draft="saturation" min="0" max="3" step="0.05" value="{{draft.saturation}}"></label></div>
-      <div class="bm-row"><label class="bm-slider">{{localize "burncinema.Madness.Brightness"}}
-        <input type="range" data-draft="brightness" min="0" max="3" step="0.05" value="{{draft.brightness}}"></label></div>
-    {{/if}}
-
-    {{#if isSound}}
-      <div class="bm-row bm-pick">
-        <input type="text" data-draft="soundSrc" value="{{draft.soundSrc}}" placeholder="{{localize "burncinema.Madness.SoundPlaceholder"}}">
-        <button type="button" data-action="pickSound"><i class="fa-solid fa-folder-open"></i></button>
-      </div>
-      <div class="bm-row"><label class="bm-slider">{{localize "burncinema.Madness.Volume"}}
-        <input type="range" data-draft="soundVolume" min="0" max="1" step="0.05" value="{{draft.soundVolume}}"></label></div>
-    {{/if}}
-
-    <div class="bm-row">
-      <input type="text" data-draft="name" value="{{draft.name}}" placeholder="{{localize "burncinema.Madness.NamePlaceholder"}}">
-    </div>
-    <div class="bm-row bm-switches">
-      <button type="button" class="bm-primary" data-action="submitVision">
-        {{#if editing}}<i class="fa-solid fa-floppy-disk"></i> {{localize "burncinema.Madness.SaveVision"}}
-        {{else}}<i class="fa-solid fa-plus"></i> {{localize "burncinema.Madness.CreateVision"}}{{/if}}
-      </button>
-      {{#if editing}}
-        <button type="button" data-action="cancelEdit"><i class="fa-solid fa-rotate-left"></i> {{localize "burncinema.Madness.Cancel"}}</button>
       {{/if}}
-    </div>
-  </fieldset>
+    {{/if}}
 
-  {{!-- Музыка безумия (Lazy Music) --}}
-  <fieldset class="bm-fieldset">
-    <legend>{{localize "burncinema.Madness.Music"}}</legend>
-    {{#unless hasLazyMusic}}
-      <p class="bm-empty">{{localize "burncinema.Madness.NoLazyMusic"}}</p>
-    {{else}}
-      <div class="bm-row bm-pick">
-        <input type="text" data-draft="musicSrc" value="{{draft.musicSrc}}" placeholder="{{localize "burncinema.Madness.MusicPlaceholder"}}">
-        <button type="button" data-action="musicPick" data-tooltip="{{localize "burncinema.Madness.MusicPickFile"}}"><i class="fa-solid fa-folder-open"></i></button>
-        <button type="button" data-action="musicSavePreset" data-tooltip="{{localize "burncinema.Madness.SavePreset"}}"><i class="fa-solid fa-star"></i></button>
-        <button type="button" data-action="musicFromLM" data-tooltip="{{localize "burncinema.Madness.MusicFromLM"}}"><i class="fa-solid fa-music"></i></button>
-      </div>
-      {{#if musicPresets.length}}
-        <ul class="bm-list">
-          {{#each musicPresets}}
-            <li data-preset-id="{{id}}">
-              <i class="fa-solid fa-compact-disc"></i>
-              <span data-action="musicUsePreset" class="bm-clickable">{{name}}</span>
-              <button type="button" data-action="musicRemovePreset"><i class="fa-solid fa-xmark"></i></button>
-            </li>
+  {{else}}
+  {{!-- ============================= Мастерская ============================= --}}
+
+    <div class="bm-work">
+      <div class="bm-work-l">
+        <div class="bm-step"><span class="bm-n">1</span>{{localize "burncinema.Madness.StepKind"}}</div>
+        <div class="bm-kinds">
+          {{#each kinds}}
+            <button type="button" class="bm-kind {{#if active}}on{{/if}}" data-action="setKind" data-kind="{{key}}" {{#if ../editing}}{{#unless active}}disabled{{/unless}}{{/if}}>
+              <i class="fa-solid {{icon}}"></i><span>{{label}}</span>
+            </button>
           {{/each}}
-        </ul>
-      {{/if}}
-      <label class="bm-check" data-tooltip="{{localize "burncinema.Madness.MusicIsolateHint"}}">
-        <input type="checkbox" name="music-isolate" {{#if music.isolate}}checked{{/if}}>
-        {{localize "burncinema.Madness.MusicIsolate"}}
-      </label>
-      {{#if music.enabled}}
-        <div class="bm-status"><span class="bm-dot live"></span>
-          <span>{{localize "burncinema.Madness.MusicNow"}}: <b>{{musicTrackName}}</b></span>
         </div>
-      {{/if}}
-      <div class="bm-row bm-switches">
-        <button type="button" data-action="musicStart"><i class="fa-solid fa-play"></i> {{localize "burncinema.Madness.MusicStart"}}</button>
-        <button type="button" data-action="musicStop"><i class="fa-solid fa-rotate-left"></i> {{localize "burncinema.Madness.MusicStop"}}</button>
+        <p class="bm-hint">{{kindHint}}</p>
+
+        {{#if needsSelection}}
+          <div class="bm-step"><span class="bm-n">2</span>{{localize "burncinema.Madness.StepWho"}}</div>
+          <div data-selection></div>
+          {{#if isAppearance}}
+            <div class="bm-radio">
+              <label><input type="radio" name="byActor" value="0" {{#unless draft.byActor}}checked{{/unless}}> {{localize "burncinema.Madness.ScopeTokens"}}</label>
+              <label><input type="radio" name="byActor" value="1" {{#if draft.byActor}}checked{{/if}}> {{localize "burncinema.Madness.ByActor"}}</label>
+            </div>
+          {{/if}}
+          {{#if isPhantom}}
+            <label class="bm-check">
+              <input type="checkbox" data-draft="autoHide" {{#if draft.autoHide}}checked{{/if}}>
+              {{localize "burncinema.Madness.AutoHide"}}
+            </label>
+          {{/if}}
+        {{/if}}
+
+        {{#if isAppearance}}
+          <div class="bm-step"><span class="bm-n">3</span>{{localize "burncinema.Madness.StepLook"}}</div>
+          <div class="bm-look">
+            <div class="bm-preview" data-action="pickImg" data-tooltip="{{localize "burncinema.Madness.PickImage"}}">
+              {{#if draft.img}}<img src="{{draft.img}}">{{else}}<i class="fa-solid fa-image"></i><small>{{localize "burncinema.Madness.Picture"}}</small>{{/if}}
+            </div>
+            <div class="bm-look-r">
+              <div class="bm-presets">
+                {{#each presets}}
+                  <span class="bm-preset {{#if on}}on{{/if}}" data-preset-id="{{id}}" data-src="{{src}}" data-action="usePreset" data-tooltip="{{name}}">
+                    <img src="{{src}}">
+                    <button type="button" class="bm-preset-del" data-action="removePreset"><i class="fa-solid fa-xmark"></i></button>
+                  </span>
+                {{/each}}
+                <button type="button" class="bm-ico" data-action="pickImg" data-tooltip="{{localize "burncinema.Madness.PickImage"}}"><i class="fa-solid fa-folder-open"></i></button>
+                <button type="button" class="bm-ico" data-action="savePreset" data-tooltip="{{localize "burncinema.Madness.SavePreset"}}"><i class="fa-solid fa-star"></i></button>
+              </div>
+              <input type="text" data-draft="label" value="{{draft.label}}" placeholder="{{localize "burncinema.Madness.LabelPlaceholder"}}">
+              <button type="button" class="bm-link" data-action="toggleFine">
+                <i class="fa-solid fa-sliders"></i>
+                {{#if fineOpen}}{{localize "burncinema.Madness.FineHide"}}{{else}}{{localize "burncinema.Madness.FineShow"}}{{/if}}
+                {{#if lookSummary}}<span class="bm-dim">· {{lookSummary}}</span>{{/if}}
+              </button>
+            </div>
+          </div>
+          {{#if fineOpen}}
+            <div class="bm-fine">
+              <label>{{localize "burncinema.Madness.LookScale"}}
+                <input type="range" min="0.2" max="3" step="0.05" data-draft="lookScale" value="{{draft.lookScale}}"><output>{{draft.lookScale}}</output></label>
+              <label>{{localize "burncinema.Madness.LookAlpha"}}
+                <input type="range" min="0.1" max="1" step="0.05" data-draft="lookAlpha" value="{{draft.lookAlpha}}"><output>{{draft.lookAlpha}}</output></label>
+              <label>{{localize "burncinema.Madness.LookRing"}}
+                <select data-draft="lookRing">
+                  {{#each ringModes}}<option value="{{value}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}
+                </select></label>
+              <label data-tooltip="{{localize "burncinema.Madness.LookTintHint"}}">{{localize "burncinema.Madness.LookTint"}}
+                <input type="color" data-draft="lookTint" value="{{draft.lookTint}}"></label>
+              <span class="bm-pair">{{localize "burncinema.Madness.LookMirror"}}
+                <label data-tooltip="{{localize "burncinema.Madness.LookMirrorX"}}"><input type="checkbox" data-draft="lookMirrorX" {{#if draft.lookMirrorX}}checked{{/if}}> ↔</label>
+                <label data-tooltip="{{localize "burncinema.Madness.LookMirrorY"}}"><input type="checkbox" data-draft="lookMirrorY" {{#if draft.lookMirrorY}}checked{{/if}}> ↕</label>
+              </span>
+              {{#unless lookRingOff}}
+                <span class="bm-pair">
+                  <label><input type="checkbox" data-draft="lookRingColorOn" {{#if draft.lookRingColorOn}}checked{{/if}}> {{localize "burncinema.Madness.LookRingColor"}}</label>
+                  <input type="color" data-draft="lookRingColor" value="{{draft.lookRingColor}}">
+                  <label><input type="checkbox" data-draft="lookRingBgOn" {{#if draft.lookRingBgOn}}checked{{/if}}> {{localize "burncinema.Madness.LookRingBg"}}</label>
+                  <input type="color" data-draft="lookRingBg" value="{{draft.lookRingBg}}">
+                </span>
+              {{/unless}}
+            </div>
+          {{/if}}
+        {{/if}}
+
+        {{#if isTint}}
+          <div class="bm-step"><span class="bm-n">2</span>{{localize "burncinema.Madness.StepTint"}}</div>
+          <div class="bm-fine">
+            <label>{{localize "burncinema.Madness.Hue"}}
+              <input type="range" data-draft="hue" min="0" max="360" step="1" value="{{draft.hue}}"><output>{{draft.hue}}</output></label>
+            <label>{{localize "burncinema.Madness.Saturation"}}
+              <input type="range" data-draft="saturation" min="0" max="3" step="0.05" value="{{draft.saturation}}"><output>{{draft.saturation}}</output></label>
+            <label>{{localize "burncinema.Madness.Brightness"}}
+              <input type="range" data-draft="brightness" min="0" max="3" step="0.05" value="{{draft.brightness}}"><output>{{draft.brightness}}</output></label>
+            <span class="bm-swatch" data-swatch data-tooltip="{{localize "burncinema.Madness.TintPreview"}}"></span>
+          </div>
+        {{/if}}
+
+        {{#if isSound}}
+          <div class="bm-step"><span class="bm-n">2</span>{{localize "burncinema.Madness.StepSound"}}</div>
+          <div class="bm-line">
+            <input type="text" class="bm-grow" data-draft="soundSrc" value="{{draft.soundSrc}}" placeholder="{{localize "burncinema.Madness.SoundPlaceholder"}}">
+            <button type="button" class="bm-ico" data-action="pickSound"><i class="fa-solid fa-folder-open"></i></button>
+          </div>
+          <label class="bm-slider">{{localize "burncinema.Madness.Volume"}}
+            <input type="range" data-draft="soundVolume" min="0" max="1" step="0.05" value="{{draft.soundVolume}}"><output>{{draft.soundVolume}}</output></label>
+        {{/if}}
+
+        <div class="bm-step"><span class="bm-n">{{nameStep}}</span>{{localize "burncinema.Madness.StepName"}} <small>{{localize "burncinema.Madness.StepNameHint"}}</small></div>
+        <input type="text" data-draft="name" value="{{draft.name}}" placeholder="{{localize "burncinema.Madness.Vision"}}">
+
+        <div class="bm-foot">
+          {{#if editing}}
+            <button type="button" class="bm-primary" data-action="submitVision"><i class="fa-solid fa-floppy-disk"></i> {{localize "burncinema.Madness.SaveVision"}}</button>
+            <button type="button" class="bm-ghost" data-action="cancelEdit"><i class="fa-solid fa-rotate-left"></i> {{localize "burncinema.Madness.Cancel"}}</button>
+          {{else}}
+            <button type="button" class="bm-primary" data-action="submitVision"><i class="fa-solid fa-plus"></i> {{localize "burncinema.Madness.CreateVision"}}</button>
+            <button type="button" class="bm-ghost" data-action="submitAndHold"><i class="fa-solid fa-thumbtack"></i> {{createHoldLabel}}</button>
+          {{/if}}
+        </div>
       </div>
-    {{/unless}}
-  </fieldset>
+
+      <div class="bm-work-r">
+        <div class="bm-group">{{localize "burncinema.Madness.AllVisions"}}</div>
+        {{#if allVisions.length}}
+          <ul class="bm-list">
+            {{#each allVisions}}
+              <li class="bm-row slim {{#if editing}}editing{{/if}} {{#if elsewhere}}elsewhere{{/if}}" data-vision-id="{{id}}">
+                {{#if img}}<span class="bm-thumb sm"><img src="{{img}}"></span>{{else}}<span class="bm-thumb sm bm-k-{{kind}}"><i class="fa-solid {{icon}}"></i></span>{{/if}}
+                <span class="bm-txt">
+                  <b>{{name}}</b>
+                  <small>{{kindLabel}} · {{#if elsewhere}}{{sceneName}}{{else}}{{desc}}{{/if}}</small>
+                </span>
+                <button type="button" class="bm-ico" data-action="editVision" data-tooltip="{{localize "burncinema.Madness.Edit"}}"><i class="fa-solid fa-pen"></i></button>
+                <button type="button" class="bm-ico bm-del" data-action="deleteVision" data-tooltip="{{localize "burncinema.Madness.Delete"}}"><i class="fa-solid fa-trash"></i></button>
+              </li>
+            {{/each}}
+          </ul>
+        {{else}}
+          <p class="bm-hint">{{localize "burncinema.Madness.NoVisionsYet"}}</p>
+        {{/if}}
+      </div>
+    </div>
+  {{/if}}
 
   {{/unless}}
 </div>

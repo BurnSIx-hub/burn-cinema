@@ -109,8 +109,10 @@ function pickToken(point) {
   return mine[0];
 }
 
+/** Ключ памяти — как у ГМа в resolveRequest: актёр токена, иначе персонаж пользователя. */
 function keyFor(token) {
-  return memoryKey({ actorId: token?.actor?.id, tokenId: token?.id, userId: game.user.id });
+  const actorId = token?.actor?.id ?? (token ? null : game.user.character?.id);
+  return memoryKey({ actorId, tokenId: token?.id, userId: game.user.id });
 }
 
 function regionPolys(region) {
@@ -124,30 +126,65 @@ function distanceUnits(region, point) {
   return pxToUnits(px, d.size, d.distance);
 }
 
-/** Зона под курсором. Вложенные зоны: побеждает меньшая. */
+/** Центр рамки региона — точка по умолчанию для внешних вызовов. */
+function regionCenter(region) {
+  const b = region.bounds;
+  return b ? { x: b.x + b.width / 2, y: b.y + b.height / 2 } : { x: 0, y: 0 };
+}
+
+/** Видит ли игрок точку (туман, зрение). ГМу — всегда. */
+function pointVisible(point) {
+  if (game.user.isGM || !point || !canvas.visibility?.tokenVision) return true;
+  return canvas.visibility.testVisibility?.(point, { tolerance: 2 }) !== false;
+}
+
+/** Доступна ли зона этому пользователю сейчас: «один раз» уже не погасил её. */
+function zoneOpen(zone, point) {
+  if (game.user.isGM) return true;
+  const tok = pickToken(point ?? regionCenter(zone.region));
+  return planInspection(zone.behavior.system, zoneSeen(zone.behavior, keyFor(tok))).allowed;
+}
+
+/** Зона под точкой сцены. Этаж, «один раз», видимость; вложенные — побеждает меньшая. */
 function hitTest(point) {
+  if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) return null;
   let best = null;
   for (const z of listZones()) {
     if (!z.region.polygonTree?.testPoint?.(point)) continue;
-    if (!game.user.isGM) {
-      const tok = pickToken(point);
-      const plan = planInspection(z.behavior.system, zoneSeen(z.behavior, keyFor(tok)));
-      if (!plan.allowed) continue;
-    }
+    if (!zoneOpen(z, point)) continue;
     const area = z.region.area ?? Infinity;
     if (!best || area < best.area) best = { ...z, area };
   }
-  if (!best) return null;
-  if (!game.user.isGM && canvas.visibility?.tokenVision) {
-    const vis = canvas.visibility.testVisibility?.(point, { tolerance: 2 });
-    if (vis === false) return null;
-  }
+  if (!best || !pointVisible(point)) return null;
   return best;
+}
+
+/**
+ * Зона по региону или поведению (документ или объект холста) — для
+ * внешних хит-тестов, например луча по модели в 3D. Те же правила, что у
+ * hitTest, кроме формы: включена, на текущем этаже, не погашена «один раз»;
+ * видимость проверяется, только если дана point.
+ */
+function zoneOf(target, { point = null } = {}) {
+  const doc = target?.document ?? target;
+  if (!doc) return null;
+  let behavior = null;
+  if (doc.documentName === "RegionBehavior") behavior = doc;
+  else if (doc.documentName === "Region") behavior = doc.behaviors.find((b) => b.type === BEHAVIOR_TYPE && !b.disabled) ?? null;
+  if (!behavior || behavior.type !== BEHAVIOR_TYPE || behavior.disabled) return null;
+  const z = listZones().find((x) => x.behavior.id === behavior.id && x.region.id === behavior.parent?.id);
+  if (!z || !zoneOpen(z, point)) return null;
+  if (point && !pointVisible(point)) return null;
+  return { ...z, area: z.region.area ?? Infinity };
 }
 
 /* ═════════════════════════════ Наведение ══════════════════════════════════ */
 
-const ui_ = { hover: null, gfx: null, pulse: 0, ticker: null, label: null, down: null, plaque: null };
+const ui_ = {
+  hover: null, gfx: null, pulse: 0, ticker: null, label: null, down: null, plaque: null,
+  hoverEl: null,   // элемент, на котором сейчас висит класс курсора-лупы
+  anchorFn: null   // внешний расчёт якоря плашки (3D); null — по 2D-холсту
+};
 
 function overlayRoot() {
   let el = document.getElementById("burn-inspect-layer");
@@ -167,14 +204,16 @@ function eligible(ev) {
   return true;
 }
 
-function setHover(hit) {
-  const view = canvas.app?.view;
-  const same = hit && ui_.hover && hit.behavior.id === ui_.hover.behavior.id;
-  if (same) return;
+function setHover(hit, element = canvas.app?.view) {
+  const same = hit && ui_.hover && hit.behavior.id === ui_.hover.behavior.id && element === ui_.hoverEl;
+  if (same || (!hit && !ui_.hover)) return;
+  ui_.hoverEl?.classList.remove("burn-inspect-cursor");
   ui_.hover = hit;
-  view?.classList.toggle("burn-inspect-cursor", !!hit);
+  ui_.hoverEl = hit ? (element ?? null) : null;
+  ui_.hoverEl?.classList.add("burn-inspect-cursor");
   drawHighlight();
   drawHoverLabel();
+  Hooks.callAll("burnCinema.inspectHover", hit ?? null);
 }
 
 function ensureGfx() {
@@ -191,7 +230,8 @@ function drawHighlight() {
   const g = ensureGfx();
   g.clear();
   const z = ui_.hover;
-  if (!z) return;
+  // С внешним якорем (3D) 2D-подсветку не рисуем: её не видно, подсвечивает мост.
+  if (!z || ui_.anchorFn) return;
   const a = 0.55 + 0.35 * Math.sin(ui_.pulse);
   const w = Math.max(2, 3 / (canvas.stage.scale.x || 1));
   for (const p of z.region.polygons ?? []) {
@@ -221,6 +261,21 @@ function drawHoverLabel() {
 }
 
 function anchorsFor(region) {
+  if (ui_.anchorFn) {
+    try {
+      const a = ui_.anchorFn(region);
+      if (a?.top && a?.bottom && [a.top.x, a.top.y, a.bottom.x, a.bottom.y].every(Number.isFinite)) {
+        // Предмет далеко за кадром (например, точка -10000 за камерой) — как null:
+        // спрятать, а не прижимать плашку к краю экрана.
+        const w = window.innerWidth, h = window.innerHeight;
+        const far = (pt) => pt.x < -w / 2 || pt.x > w * 1.5 || pt.y < -h / 2 || pt.y > h * 1.5;
+        return far(a.top) && far(a.bottom) ? null : a;
+      }
+    } catch (e) {
+      console.warn(`${MODULE_ID} | осмотр: внешний якорь упал`, e);
+    }
+    return null;
+  }
   const b = region.bounds;
   if (!b) return null;
   const top = canvas.clientCoordinatesFromCanvas({ x: b.x + b.width / 2, y: b.y });
@@ -232,6 +287,8 @@ function positionLabel() {
   const el = ui_.label, z = ui_.hover;
   if (!el || !z) return;
   const a = anchorsFor(z.region);
+  // Внешний якорь может временно не знать точку (предмет за кадром) — прячем подпись.
+  el.style.visibility = a ? "" : "hidden";
   if (!a) return;
   el.style.left = `${a.top.x}px`;
   el.style.top = `${a.top.y - 8}px`;
@@ -567,8 +624,11 @@ function positionPlaque() {
   const p = ui_.plaque;
   if (!p) return;
   const region = canvas.scene?.regions.get(p.regionId);
-  const a = region && anchorsFor(region);
-  if (!a) return closePlaque();
+  if (!region) return closePlaque();
+  const a = anchorsFor(region);
+  // В 2D якорь есть всегда; null бывает у внешнего якоря — плашку прячем, а не закрываем.
+  p.el.style.visibility = a ? "" : "hidden";
+  if (!a) return ui_.anchorFn ? undefined : closePlaque();
   const r = p.el.getBoundingClientRect();
   const { left, top, below } = placePlaque({
     anchorTop: a.top, anchorBottom: a.bottom,
@@ -633,6 +693,42 @@ function onSocket(msg, senderId) {
   }
 }
 
+/**
+ * Открытый API для внешних холстов (мост 3D Canvas из burn-kartograf).
+ * Описан в inspect/API.md. Версия интерфейса — apiVersion.
+ */
+function publicApi() {
+  const asZone = (z) => (z?.region && z?.behavior ? z : null);
+  return {
+    /** Зона под точкой сцены {x, y} или null (правила hitTest). */
+    zoneAt: (point) => hitTest(point),
+    /** Зона по региону/поведению или null (включена, этаж, «один раз», видимость при point). */
+    zoneOf: (target, opts) => zoneOf(target, opts),
+    /** То же, что щелчок: предпросмотр ГМа или дальность, бросок, запрос ГМу. */
+    inspectZone: async (zone, { point = null, event = null } = {}) => {
+      const z = asZone(zone) ? zoneOf(zone.behavior, { point }) : null;
+      if (!z) return false;
+      await inspect(z, point ?? regionCenter(z.region), event ?? new PointerEvent("pointerup"));
+      return true;
+    },
+    /** Задать зону под курсором снаружи; класс лупы вешается на element. */
+    hover: (zone, { element = null } = {}) => setHover(asZone(zone), element),
+    /** fn(region) → {top:{x,y}, bottom:{x,y}} в пикселях экрана; null — снова 2D. */
+    setAnchor: (fn) => {
+      ui_.anchorFn = typeof fn === "function" ? fn : null;
+      drawHighlight();
+      positionLabel();
+      if (ui_.plaque) positionPlaque();
+    },
+    /** Пересчитать подпись и плашку сейчас (звать каждый кадр внешнего холста). */
+    reposition: () => {
+      positionLabel();
+      if (ui_.plaque) positionPlaque();
+    },
+    closePlaque: () => closePlaque()
+  };
+}
+
 /** Сбросить память осмотров зоны (или всех зон сцены). */
 export async function resetInspectMemory(behavior) {
   if (!game.user.isGM) return;
@@ -657,7 +753,10 @@ Hooks.once("ready", async () => {
   game.socket.on(SOCKET, onSocket);
   (game.burnCinema ??= {}).openInspect = () => openInspectManager();
   game.burnCinema.inspect = {
+    apiVersion: 1,
+    version: game.modules.get(MODULE_ID)?.version ?? null,
     listZones, resetInspectMemory, BEHAVIOR_TYPE, normalizeSystem, openEditor: openInspectEditor,
+    ...publicApi(),
     _debug: { hitTest, inspect, ui: ui_, showPlaque, closePlaque }
   };
   if (canvas?.ready) attachCanvas();
@@ -699,7 +798,12 @@ Hooks.on("canvasTearDown", () => {
   closePlaque();
   ui_.label?.remove();
   ui_.label = null;
-  ui_.hover = null;
+  ui_.hoverEl?.classList.remove("burn-inspect-cursor");
+  ui_.hoverEl = null;
+  if (ui_.hover) {
+    ui_.hover = null;
+    Hooks.callAll("burnCinema.inspectHover", null);
+  }
 });
 for (const h of ["updateRegionBehavior", "deleteRegionBehavior", "deleteRegion", "updateRegion"]) {
   Hooks.on(h, () => {

@@ -167,6 +167,19 @@ export async function runInspectTests(check) {
   const storeSrc = readFileSync(join(root, "inspect/scripts/store.mjs"), "utf8");
   check("осмотр: хранилище пишет только ГМ", /if \(!game\.user\.isGM\) throw/.test(storeSrc) && /if \(!game\.user\.isGM\) return state/.test(storeSrc));
 
+  // Открытый API для внешних холстов (inspect/API.md)
+  check("осмотр: apiVersion 1", /apiVersion: 1,/.test(mainSrc));
+  for (const m of ["zoneAt", "zoneOf", "inspectZone", "hover", "setAnchor", "reposition", "closePlaque"]) {
+    check(`осмотр: API ${m}`, new RegExp(`\\b${m}: `).test(mainSrc));
+  }
+  check("осмотр: хук burnCinema.inspectHover", /Hooks\.callAll\("burnCinema\.inspectHover"/.test(mainSrc));
+  check("осмотр: якорь далеко за экраном прячет, а не прижимает плашку", /far\(a\.top\) && far\(a\.bottom\) \? null : a/.test(mainSrc));
+  check("осмотр: при внешнем якоре 2D-подсветка не рисуется", /if \(!z \|\| ui_\.anchorFn\) return;/.test(mainSrc));
+  const css = readFileSync(join(root, "inspect/styles/inspect.css"), "utf8");
+  check("осмотр: лупа работает не только на #board", /^\.burn-inspect-cursor \{/m.test(css));
+  const apiDoc = readFileSync(join(root, "inspect/API.md"), "utf8");
+  check("осмотр: API.md описывает все методы", ["zoneAt", "zoneOf", "inspectZone", "hover", "setAnchor", "reposition", "closePlaque", "apiVersion"].every((m) => apiDoc.includes(m)));
+
   // Синтаксис модулей браузера
   for (const f of ["inspect/scripts/main.mjs", "inspect/scripts/manager.mjs", "inspect/scripts/logic.mjs",
     "inspect/scripts/store.mjs", "inspect/scripts/editor.mjs", "inspect/scripts/migrate.mjs"]) {

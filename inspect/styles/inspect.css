@@ -1,6 +1,8 @@
 /* 🔥 Осмотр предметов — лупа, подпись при наведении, пергаментная плашка */
 
-#board.burn-inspect-cursor {
+/* #board — 2D-холст; просто класс — внешний холст (3D Canvas через API hover). */
+#board.burn-inspect-cursor,
+.burn-inspect-cursor {
   cursor: url("../assets/magnifier.svg") 13 13, zoom-in !important;
 }
 #board.burn-inspect-picking {
